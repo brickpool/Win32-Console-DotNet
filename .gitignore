@@ -33,3 +33,22 @@ inc/
 /MANIFEST.bak
 /pm_to_blib
 /*.zip
+
+# Documents
+/doc/*/
+/doc/*.html
+/doc/*.css
+
+# Sources
+/lib/_*
+/src/
+/t/_*
+/xt/
+
+# Komodo IDE
+*.komodoproject
+/.komodotools/
+
+# VS Code
+/.vscode/
+*.code-workspace
