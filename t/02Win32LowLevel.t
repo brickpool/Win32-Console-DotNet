@@ -9,17 +9,13 @@ BEGIN {
     plan skip_all => 'This is not MSWin32';
   }
   else {
-    plan tests => 6;
+    plan tests => 7;
   }
 }
 
 BEGIN {
-  use_ok 'Win32::Native', qw(
-    ERROR_INVALID_HANDLE
-    VK_CAPITAL
-    VK_NUMLOCK
-    GetKeyState
-  );
+  use_ok 'Win32::Console::DotNet';
+  use_ok 'Win32Native';
 };
 
 #----------------
@@ -27,21 +23,15 @@ note 'Constants';
 #----------------
 
 is(
-  ERROR_INVALID_HANDLE,
+  Win32Native::ERROR_INVALID_HANDLE,
   0x6,
   'ERROR_INVALID_HANDLE'
 );
 
 is(
-  VK_CAPITAL,
-  0x14,
-  'VK_CAPITAL'
-);
-
-is(
-  VK_NUMLOCK,
-  0x90,
-  'VK_NUMLOCK'
+  Win32Native::KEY_EVENT,
+  0x0001,
+  'KEY_EVENT'
 );
 
 #----------------
@@ -50,7 +40,14 @@ note 'API calls';
 
 lives_ok(
   sub {
-    my $lock = GetKeyState(VK_CAPITAL) & 1;
+    Win32Native::Beep(800, 200);
+  },
+  'Beep(800, 200)'
+);
+
+lives_ok(
+  sub {
+    my $lock = Win32Native::GetKeyState(0x14) & 1;
     diag sprintf("CapsLock: %s", $lock ? 'enabled' : 'disabled');
   },
   'GetKeyState(VK_CAPITAL)'
@@ -58,7 +55,7 @@ lives_ok(
 
 lives_ok(
   sub {
-    my $lock = GetKeyState(VK_NUMLOCK) & 1;
+    my $lock = Win32Native::GetKeyState(0x90) & 1;
     diag sprintf("NumberLock: %s", $lock ? 'enabled' : 'disabled');
   },
   'GetKeyState(VK_NUMLOCK)'

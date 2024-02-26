@@ -1,10 +1,24 @@
+=pod
+
 =head1 NAME
 
-System::Console - Win32 Console .NET interface
+Win32::Console::DotNet - Win32 Console .NET interface
+
+=head1 SYNOPSIS
+
+Simply integrate this module into your package or script.
+
+  use Win32::Console::DotNet;
+  System::Console->WriteLine();
+
+  use Win32::Console::DotNet;
+  # using the System namespace
+  use System;
+  Console->WriteLine();
 
 =cut
 
-package System::Console;
+package Win32::Console::DotNet;
 
 # ------------------------------------------------------------------------
 # Boilerplate ------------------------------------------------------------
@@ -12,13 +26,12 @@ package System::Console;
 
 use 5.014;
 
-use constant::boolean;
-use Moo;
-use namespace::autoclean 0.16;
+use Class::Tiny::Antlers qw( -all );
+use namespace::sweep;
 
 # version '...'
-our $version = 'v4.8.0';
-our $VERSION = '0.001_001';
+our $version = 'v4.6.0';
+our $VERSION = '0.002_000';
 $VERSION = eval $VERSION;
 
 # authority '...'
@@ -30,40 +43,14 @@ our $AUTHORITY = 'github:brickpool';
 # ------------------------------------------------------------------------
 
 use Devel::StrictMode;
-no if !STRICT, 'warnings', 'void';
+no if !STRICT, 'warnings', qw( void );
 
-use Carp qw(
-  confess 
-  croak
-);
 use English qw( -no_match_vars );
+use List::Util qw( max );
 use PerlX::Assert;
-use Scalar::Util qw( isdual );
-use Sub::Private;
 use Win32;
 use Win32::Console;
-use Win32API::File qw( 
-  :FILE_TYPE_
-  :Misc
-);
-
-use Win32::Console::DotNet::Types qw( :all );
-use Win32::Console::More qw( KEY_EVENT );
-use Win32::Native qw(
-  ERROR_INVALID_HANDLE
-
-  VK_CLEAR
-  VK_SHIFT
-  VK_MENU
-  VK_CAPITAL
-  VK_PRIOR
-  VK_NEXT
-  VK_INSERT
-  VK_NUMPAD0
-  VK_NUMPAD9
-  VK_NUMLOCK
-  VK_SCROLL
-);
+use Win32API::File;
 
 # ------------------------------------------------------------------------
 # Class Defnition --------------------------------------------------------
@@ -87,18 +74,230 @@ public class I<< System::Console >>
 
 Object Hierarchy
 
-  Moo::Object
+  Class::Tiny::Object
     System::Console
-
-All Implemented Roles:
-
-  MooX::Singleton
 
 =cut
 
-package System::Console {
+package Win32::Console::DotNet {
 
-  with 'MooX::Singleton';
+  # ------------------------------------------------------------------------
+  # Type Constraints -------------------------------------------------------
+  # ------------------------------------------------------------------------
+
+=begin private
+
+=cut
+
+  use namespace::sweep -also => [qw(
+    is_Object
+    is_Bool
+    assert_ArrayRef
+    assert_CodeRef
+    assert_Str
+    assert_Object
+    assert_Bool
+    assert_Int
+  )];
+
+=head2 Type Constraints
+
+Basic type constraints
+
+=over
+
+=item <Types::Standard>
+
+This module imports the following type constraints:
+
+  ArrayRef
+  CodeRef
+  Object
+  Str
+  Bool
+  Int
+
+=cut
+
+  use Type::Nano qw(
+    ArrayRef
+    CodeRef
+    Str
+    Object
+    Bool
+    Int
+  );
+
+=item I<is_Object>
+
+  sub is_Object($value) : Bool
+
+Check for a blessed object.
+
+I<param> $value to be checked
+
+I<return> true if $value is blessed
+
+=cut
+
+  sub is_Object($) {
+    assert { @ == 1 };
+    return Object->check($_[0]);
+  }
+
+=item I<is_Bool>
+
+  sub is_Bool($value) : Bool
+
+Check for a reasonable boolean value. Accepts 1, 0, the empty string and undef.
+
+I<param> $value to be checked
+
+I<return> true if operand is boolean
+
+=cut
+
+  sub is_Bool($) {
+    assert { @ == 1 };
+    return Bool->check($_[0]);
+  }
+
+=item I<assert_ArrayRef>
+
+  sub assert_ArrayRef($ref) : ArrayRef
+
+Check the array reference.
+
+I<param> $ref to be checked
+
+I<return> $ref if operand is an array reference
+
+I<throw> IllegalArgumentException if the check fails
+
+=cut
+
+  sub assert_ArrayRef($) {
+    assert { @ == 1 };
+    unless ( ArrayRef->check($_[0]) ) {
+      confess("IllegalArgumentException: %s", ArrayRef->get_message($_[0]));
+    }
+    return $_[0];
+  }
+
+=item I<assert_CodeRef>
+
+  sub assert_CodeRef($ref) : CodeRef
+
+Check the code reference.
+
+I<param> $ref to be checked
+
+I<return> $ref if operand is a code reference
+
+I<throw> IllegalArgumentException if the check fails
+
+=cut
+
+  sub assert_CodeRef($) {
+    assert { @ == 1 };
+    unless ( CodeRef->check($_[0]) ) {
+      confess("IllegalArgumentException: %s", CodeRef->get_message($_[0]));
+    }
+    return $_[0];
+  }
+
+=item I<assert_Str>
+
+  sub assert_Str($value) : Str
+
+Check the string that cannot be stringified.
+
+I<param> $value to be checked
+
+I<return> $value if the value is a string
+
+I<throw> IllegalArgumentException if the check fails
+
+=cut
+
+  sub assert_Str($) {
+    assert { @ == 1 };
+    unless ( Str->check($_[0]) ) {
+      confess("IllegalArgumentException: %s", Str->get_message($_[0]));
+    }
+    return $_[0];
+  }
+
+=item I<assert_Object>
+
+  sub assert_Object($value) : Object
+
+Check for a blessed object.
+
+I<param> $value to be checked
+
+I<return> $value if $value is blessed
+
+I<throw> IllegalArgumentException if the check fails
+
+=cut
+  sub assert_Object($) {
+    assert { @ == 1 };
+    unless ( Object->check($_[0]) ) {
+      confess("IllegalArgumentException: %s", Object->get_message($_[0]));
+    }
+    return $_[0];
+  }
+
+=item I<assert_Bool>
+
+  sub assert_Bool($value) : Bool
+
+Check the boolean value. Accepts 1, 0, the empty string and undef.
+
+I<param> $value to be checked
+
+I<return> $value if the value is boolean
+
+I<throw> IllegalArgumentException if the check fails
+
+=cut
+
+  sub assert_Bool($) {
+    assert { @ == 1 };
+    unless ( Bool->check($_[0]) ) {
+      confess("IllegalArgumentException: %s", Bool->get_message($_[0]));
+    }
+    return $_[0];
+  }
+
+=item I<is_Int>
+
+  sub is_Int($value) : Bool
+
+Check for on integer; strict constaint.
+
+I<param> $value to be checked
+
+I<return> true if operand is an integer
+
+I<throw> IllegalArgumentException if the check fails
+
+=cut
+
+  sub assert_Int($) {
+    assert { @ == 1 };
+    unless ( Int->check($_[0]) ) {
+      confess("IllegalArgumentException: %s", Int->get_message($_[0]));
+    }
+    return $_[0];
+  }
+
+=back
+
+=end private
+
+=cut
 
   # ------------------------------------------------------------------------
   # Constants --------------------------------------------------------------
@@ -106,34 +305,158 @@ package System::Console {
 
 =begin private
 
+=cut
+
+  use namespace::sweep -also => [qw(
+    TRUE
+    FALSE
+
+    AltVKCode
+    NumberLockVKCode
+    CapsLockVKCode
+
+    VK_CLEAR
+    VK_SHIFT
+    VK_PRIOR
+    VK_NEXT
+    VK_INSERT
+    VK_NUMPAD0
+    VK_NUMPAD9
+    VK_SCROLL
+
+    _eventType
+    _keyDown
+    _repeatCount
+    _virtualKeyCode
+    _virtualScanCode
+    _uChar
+    _controlKeyState
+  )];
+
+=end private
+
 =head2 Constants
 
 =over
 
-=item I<_eventType>
+=item <TRUE>
 
-=item I<_keyDown>
+=item <FALSE>
 
-=item I<_repeatCount>
+  use constant {
+    TRUE  => !! 1,
+    FALSE => !! '',
+  };
 
-=item I<_virtualKeyCode>
+Defines TRUE and FALSE constants.
 
-=item I<_uChar>
-
-=item I<_controlKeyState>
+I<see> constant::boolean
 
 =cut
 
-  use constant _eventType       => 0;
-  use constant _keyDown         => 1;
-  use constant _repeatCount     => 2;
-  use constant _virtualKeyCode  => 3;
-  use constant _uChar           => 5;
-  use constant _controlKeyState => 6;
+  use constant {
+    TRUE  => !! 1,
+    FALSE => !! '',
+  };
 
-=back
+=item I<WinError.h>
+
+  constant Win32Native::ERROR_INVALID_HANDLE = 0x6;
+
+ERROR_INVALID_HANDLE is a predefined constant that is used to represent a value
+that is passed to or returned by one or more built-in functions.
+
+=cut
+
+  sub Win32Native::ERROR_INVALID_HANDLE() { 0x6 };
+
+=begin private
+
+=item I<Winuser.h>
+
+  use constant {
+    AltVKCode         => 0x12,
+    NumberLockVKCode  => 0x90,
+    CapsLockVKCode    => 0x14,
+  };
+
+  use constant {
+    VK_CLEAR    => 0x0c,
+    VK_SHIFT    => 0x10,
+    VK_PRIOR    => 0x21,
+    VK_NEXT     => 0x22,
+    VK_INSERT   => 0x2d,
+    VK_NUMPAD0  => 0x60,
+    VK_NUMPAD9  => 0x69,
+    VK_SCROLL   => 0x91,
+  };
+
+Virtual-Key Codes from Winuser.h
+
+=cut
+
+  use constant {
+    AltVKCode         => 0x12,
+    NumberLockVKCode  => 0x90,  # virtual key code
+    CapsLockVKCode    => 0x14,
+  };
+
+  use constant {
+    VK_CLEAR    => 0x0c,
+    VK_SHIFT    => 0x10,
+    VK_PRIOR    => 0x21,
+    VK_NEXT     => 0x22,
+    VK_INSERT   => 0x2d,
+    VK_NUMPAD0  => 0x60,
+    VK_NUMPAD9  => 0x69,
+    VK_SCROLL   => 0x91,
+  };
 
 =end private
+
+=item I<WinCon.h>
+
+  use constant Win32Native::KEY_EVENT => 0x0001;
+
+The Event member contains a KEY_EVENT_RECORD structure with information about a
+keyboard event.
+
+=cut
+
+  sub Win32Native::KEY_EVENT() { 0x0001 };
+
+=begin private
+
+  use constant {
+    _eventType       => 0,
+    _keyDown         => 1,
+    _repeatCount     => 2,
+    _virtualKeyCode  => 3,
+    _virtualScanCode => 4,
+    _uChar           => 5,
+    _controlKeyState => 6,
+  };
+
+Constants for accessing the input event array which is used for the console 
+input buffer API calls.
+
+I<see> KEY_EVENT_RECORD structure.
+
+=cut
+
+  use constant {
+    _eventType       => 0,
+    _keyDown         => 1,
+    _repeatCount     => 2,
+    _virtualKeyCode  => 3,
+    _virtualScanCode => 4,
+    _uChar           => 5,
+    _controlKeyState => 6,
+  };
+
+=end private
+
+=back
 
 =cut
 
@@ -147,46 +470,42 @@ package System::Console {
 
 =over
 
-=item I<_initialized>
+=item <_INSTANCES>
 
-  my $_initialized ( is => private, type => Bool ) = FALSE;
+  my %_INSTANCES ( is => private, type => Hash ) = ();
 
-If true, the start settings of the console are saved and initialized.
+The instance reference is stored in the %_INSTANCES hash.
 
-=cut
-
-  my $_initialized = FALSE;
-
-=item I<_startup_input_mode>
-
-  my $_startup_input_mode ( is => private, type => Int );
-
-Saves the start value for the console input mode.
+I<see> Class::Singelton
 
 =cut
 
-  my $_startup_input_mode;
+  my %_INSTANCES = ();
 
-=item I<_startup_output_mode>
 
-  my $_startup_output_mode ( is => private, type => Int );
+=item I<_in>
 
-Saves the start value for the console output mode.
+  my $_in ( is => private, type => Win32::Console );
+
+For L</In>
+
+=item I<_out>
+
+  my $_out ( is => private, type => Win32::Console );
+
+For L</Out>
+
+=item I<_error>
+
+  my $_error ( is => private, type => Win32::Console ):
+
+For L</Error>
 
 =cut
 
-  my $_startup_output_mode;
-
-=item I<_startup_info>
-
-  my $_startup_info ( is => private, type => ArrayRef[Int] );
-
-Saves the values of GetConsoleScreenBufferInfoEx, which are read when the 
-console is started.
-
-=cut
-
-  my $_startup_info;
+  my $_in;
+  my $_out;
+  my $_error;
 
 =item I<_cachedInputRecord>
 
@@ -213,11 +532,82 @@ For L</ResetColor>
 
   my $_haveReadDefaultColors;
 
+=item I<_inputEncoding>
+
+  my $_inputEncoding ( is => private, type => Int );
+
+For L</InputEncoding>
+
+=item I<_outputEncoding>
+
+  my $_outputEncoding ( is => private, type => Int );
+
+For L</OutputEncoding>
+
+=cut
+
+  my $_inputEncoding;
+  my $_outputEncoding;
+
+=item I<_stdInRedirectQueried>
+
+  my $_stdInRedirectQueried ( is => private, type => Bool ) = FALSE;
+
+For L</IsInputRedirected>
+
+=item I<_stdOutRedirectQueried>
+
+  my $_stdOutRedirectQueried ( is => private, type => Bool ) = FALSE;
+
+For L</IsOutputRedirected>
+
+=item I<_stdErrRedirectQueried>
+
+  my $_stdErrRedirectQueried ( is => private, type => Bool ) = FALSE;
+
+For L</IsErrorRedirected>
+
+=cut
+
+  my $_stdInRedirectQueried = FALSE;
+  my $_stdOutRedirectQueried = FALSE;
+  my $_stdErrRedirectQueried = FALSE;
+
+=item I<_isStdInRedirected>
+
+  my $_isStdInRedirected ( is => private, type => Bool );
+
+For L</IsInputRedirected>
+
+=item I<_isStdOutRedirected>
+
+  my $_isStdOutRedirected ( is => private, type => Bool );
+
+For L</IsOutputRedirected>
+
+=item I<_isStdErrRedirected>
+
+  my $_isStdErrRedirected ( is => private, type => Bool );
+
+For L</IsErrorRedirected>
+
+=cut
+
+  my $_isStdInRedirected;
+  my $_isStdOutRedirected;
+  my $_isStdErrRedirected;
+
 =item I<_consoleInputHandle>
 
   my $_consoleInputHandle ( is => private, type => Int );
 
 Holds the output handle of the console.
+
+=item I<_consoleStartupHandle>
+
+  my $_consoleStartupHandle ( is => private, type => Int );
+
+Holds the handle of the output or error console at startup.
 
 =item I<_consoleOutputHandle>
 
@@ -233,7 +623,75 @@ Holds the input handle of the console.
   # something like file handles.  Additionally, in a host like SQL 
   # Server, we won't have a console.
   my $_consoleInputHandle;
+  my $_consoleStartupHandle;
   my $_consoleOutputHandle;
+
+=item I<_ownsConsole>
+
+  my $_ownsConsole ( is => private, type => Bool ) = FALSE;
+
+If a new handle is created when the console is initialized, the variable is 
+set to true.
+
+=cut
+
+  my $_ownsConsole = FALSE;
+
+=item I<_owningInputHandle>
+
+  my $_owningInputHandle ( is => private, type => Bool ) = FALSE;
+
+If a new input handle is created when the console is initialized, the variable 
+is set to true.
+
+=item I<_owningStartupHandle>
+
+  my $_owningStartupHandle ( is => private, type => Bool ) = FALSE;
+
+If a new startup output handle is created when the console is initialized, the 
+variable is set to true.
+
+=item I<_owningOutputHandle>
+
+  my $_owningOutputHandle ( is => private, type => Bool ) = FALSE;
+
+If a new active output handle is created when the console is initialized, the 
+variable is set to true.
+
+=cut
+
+  my $_owningInputHandle = FALSE;
+  my $_owningStartupHandle = FALSE;
+  my $_owningOutputHandle = FALSE;
+
+=item I<_initialized>
+
+  my $_initialized ( is => private, type => Bool ) = FALSE;
+
+If true, the start settings of the console are saved and initialized.
+
+=cut
+
+  my $_initialized = FALSE;
+
+=item I<_startup_input_mode>
+
+  my $_startup_input_mode ( is => private, type => Int );
+
+Saves the start value for the console input mode.
+
+=item I<_startup_output_mode>
+
+  my $_startup_output_mode ( is => private, type => Int );
+
+Saves the start value for the console output mode.
+
+=cut
+
+  q/*
+  my $_startup_input_mode;
+  my $_startup_output_mode;
+  */ if 0;
 
 =back
 
@@ -263,12 +721,8 @@ valid.
 
   has BackgroundColor => (
     is        => 'rw',
-    isa       => sub { 
-      assert_Int $_[0];
-      confess("ArgumentException: InvalidConsoleColor")
-        if $_[0] < 0 || $_[0] > 15;
-    },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
     default   => sub { ($BG_BLACK & 0xf0) >> 4 },
   );
 
@@ -279,7 +733,7 @@ valid.
     goto SET if @_;
     GET: {
       my $succeeded;
-      my $csbi = _GetBufferInfo(FALSE, $succeeded);
+      my $csbi = GetBufferInfo(FALSE, $succeeded);
 
       # For code that may be used from Windows app w/ no console
       if ( !$succeeded ) {
@@ -289,17 +743,19 @@ valid.
       }
 
       my $c = $csbi->{wAttributes} & 0xf0;
-      my $value = _ColorAttributeToConsoleColor($c);
+      my $value = ColorAttributeToConsoleColor($c);
       $self->$orig($value);
       return $value;
     }
     SET: {
       my $value = shift;
+      confess("ArgumentException: InvalidConsoleColor")
+        if $value < 0 || $value > 15;
       $self->$orig($value);
-      my $c = _ConsoleColorToColorAttribute($value, TRUE);
+      my $c = ConsoleColorToColorAttribute($value, TRUE);
 
       my $succeeded;
-      my $csbi = _GetBufferInfo(FALSE, $succeeded);
+      my $csbi = GetBufferInfo(FALSE, $succeeded);
       # For code that may be used from Windows app w/ no console
       return if !$succeeded;
 
@@ -312,7 +768,7 @@ valid.
       $attr = $attr | $c;
       # Ignore errors here - there are some scenarios for running code that 
       # wants to print in colors to the console in a Windows application.
-      Win32::Console::_SetConsoleTextAttribute(_ConsoleOutputHandle(), $attr);
+      Win32::Console::_SetConsoleTextAttribute(ConsoleOutputHandle(), $attr);
       return;
     }
   };
@@ -333,8 +789,8 @@ I<throws> An I/O error occurred.
 
   has BufferHeight => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'BufferHeight' => sub {
@@ -343,7 +799,7 @@ I<throws> An I/O error occurred.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $csbi = _GetBufferInfo();
+      my $csbi = GetBufferInfo();
       my $value = $csbi->{dwSize}->{Y};
       $self->$orig($value);
       return $value;
@@ -369,8 +825,8 @@ L</WindowLeft> + L</WindowWidth>.
 
   has BufferWidth => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'BufferWidth' => sub {
@@ -379,7 +835,7 @@ L</WindowLeft> + L</WindowWidth>.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $csbi = _GetBufferInfo();
+      my $csbi = GetBufferInfo();
       my $value = $csbi->{dwSize}->{X};
       $self->$orig($value);
       return $value;
@@ -402,8 +858,8 @@ turned off.
 
   has CapsLock => (
     is        => 'rwp',
-    isa       => sub { assert_Bool $_[0] },
-    init_arg  => undef,
+    isa       => Bool,
+    # init_arg  => undef,
   );
 
   around 'CapsLock' => sub {
@@ -411,7 +867,8 @@ turned off.
     my $orig = assert_CodeRef shift;
     my $self = assert_Object shift;
     GET: {
-      my $value = (Win32::Native::GetKeyState(VK_CAPITAL) & 1) == 1;
+      require Win32Native;
+      my $value = (Win32Native::GetKeyState(CapsLockVKCode) & 1) == 1;
       $self->_set_CapsLock($value);
       return $value;
     }
@@ -430,8 +887,8 @@ than zero or greater than or equal to L</BufferWidth>.
 
   has CursorLeft => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'CursorLeft' => sub {
@@ -440,7 +897,7 @@ than zero or greater than or equal to L</BufferWidth>.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $csbi = _GetBufferInfo();
+      my $csbi = GetBufferInfo();
       my $value = $csbi->{dwCursorPosition}->{X};
       $self->$orig($value);
       return $value;
@@ -468,8 +925,8 @@ is less than 1 or greater than 100.
 
   has CursorSize => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'CursorSize' => sub {
@@ -478,7 +935,7 @@ is less than 1 or greater than 100.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $hConsole = _ConsoleOutputHandle();
+      my $hConsole = ConsoleOutputHandle();
       my ($value) = Win32::Console::_GetConsoleCursorInfo($hConsole) 
         or confess("WinIOError: $EXTENDED_OS_ERROR");
       $self->$orig($value);
@@ -490,7 +947,7 @@ is less than 1 or greater than 100.
       if ( $value < 1 || $value > 100 ) {
         confess("ArgumentOutOfRangeException: value $value CursorSize");
       }
-      my $hConsole = _ConsoleOutputHandle();
+      my $hConsole = ConsoleOutputHandle();
       my (undef, $visible) = Win32::Console::_GetConsoleCursorInfo($hConsole)
         or confess("WinIOError: $EXTENDED_OS_ERROR");
       Win32::Console::_SetConsoleCursorInfo($hConsole, $value, $visible)
@@ -512,8 +969,8 @@ than zero or greater than or equal to L</BufferHeight>.
 
   has CursorTop => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'CursorTop' => sub {
@@ -522,7 +979,7 @@ than zero or greater than or equal to L</BufferHeight>.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $csbi = _GetBufferInfo();
+      my $csbi = GetBufferInfo();
       my $value = $csbi->{dwCursorPosition}->{Y};
       $self->$orig($value);
       return $value;
@@ -546,8 +1003,8 @@ True if the cursor is visible; otherwise, false.
 
   has CursorVisible => (
     is        => 'rw',
-    isa       => sub { assert_Bool $_[0] },
-    init_arg  => undef,
+    isa       => Bool,
+    # init_arg  => undef,
   );
 
   around 'CursorVisible' => sub {
@@ -556,7 +1013,7 @@ True if the cursor is visible; otherwise, false.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $hConsole = _ConsoleOutputHandle();
+      my $hConsole = ConsoleOutputHandle();
       my (undef, $value) = Win32::Console::_GetConsoleCursorInfo($hConsole) 
         or confess("WinIOError: $EXTENDED_OS_ERROR");
       $self->$orig($value);
@@ -565,7 +1022,7 @@ True if the cursor is visible; otherwise, false.
     SET: {
       my $value = shift;
       $self->$orig($value);
-      my $hConsole = _ConsoleOutputHandle();
+      my $hConsole = ConsoleOutputHandle();
       my ($size) = Win32::Console::_GetConsoleCursorInfo($hConsole)
         or confess("WinIOError: $EXTENDED_OS_ERROR");
       Win32::Console::_SetConsoleCursorInfo($hConsole, $size, $value)
@@ -576,7 +1033,7 @@ True if the cursor is visible; otherwise, false.
 
 =item I<Error>
 
-  field Error ( is => rwp, type => Win32::Console, lazy => 1, builder => 1 );
+  field Error ( is => rwp, type => Object, lazy => 1, builder => 1 );
 
 A Windows::Console object that represents the standard error stream.
 
@@ -584,16 +1041,20 @@ A Windows::Console object that represents the standard error stream.
 
   has Error => (
     is        => 'rwp',
-    isa       => sub { assert_InstanceOf $_[0], 'Win32::Console'; },
-    init_arg  => undef,
+    isa       => Object,
+    # init_arg  => undef,
     lazy      => 1,
-    builder   => sub {
-      my $self = shift;
-      my $_error = $self->OpenStandardError();
-      assert "Didn't set Console::_error appropriately!" { $_error };
-      return $_error;
-    },
+    default   => &_build_Error,
+    # builder   => 1,
   );
+
+  sub _build_Error {
+    unless ( defined $_error ) {
+      $_error = __PACKAGE__->OpenStandardError();
+      assert "Didn't set Console::_error appropriately!" { $_error };
+    }
+    return $_error;
+  }
 
 =item I<ForegroundColor>
 
@@ -609,12 +1070,8 @@ valid.
 
   has ForegroundColor => (
     is        => 'rw',
-    isa       => sub {
-      assert_Int $_[0];
-      confess("ArgumentException: InvalidConsoleColor")
-        if $_[0] < 0 || $_[0] > 15;
-    },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
     default   => sub { $FG_LIGHTGRAY },
   );
 
@@ -625,7 +1082,7 @@ valid.
     goto SET if @_;
     GET: {
       my $succeeded;
-      my $csbi = _GetBufferInfo(FALSE, $succeeded);
+      my $csbi = GetBufferInfo(FALSE, $succeeded);
 
       # For code that may be used from Windows app w/ no console
       if ( !$succeeded ) {
@@ -634,17 +1091,19 @@ valid.
       }
 
       my $c = $csbi->{wAttributes} & 0x0f;
-      my $value = _ColorAttributeToConsoleColor($c);
+      my $value = ColorAttributeToConsoleColor($c);
       $self->$orig($value);
       return $value;
     }
     SET: {
       my $value = shift;
+      confess("ArgumentException: InvalidConsoleColor")
+        if $value < 0 || $value > 15;
       $self->$orig($value);
-      my $c = _ConsoleColorToColorAttribute($value, FALSE);
+      my $c = ConsoleColorToColorAttribute($value, FALSE);
 
       my $succeeded;
-      my $csbi = _GetBufferInfo(FALSE, $succeeded);
+      my $csbi = GetBufferInfo(FALSE, $succeeded);
       # For code that may be used from Windows app w/ no console
       return if !$succeeded;
 
@@ -657,14 +1116,14 @@ valid.
       $attr = $attr | $c;
       # Ignore errors here - there are some scenarios for running code that 
       # wants to print in colors to the console in a Windows application.
-      Win32::Console::_SetConsoleTextAttribute(_ConsoleOutputHandle(), $attr);
+      Win32::Console::_SetConsoleTextAttribute(ConsoleOutputHandle(), $attr);
       return;
     }
   };
 
 =item I<In>
 
-  field In ( is => rwp, type => Win32::Console, lazy => 1, builder => 1 );
+  field In ( is => rwp, type => Object, lazy => 1, builder => 1 );
 
 A Windows::Console object that represents the standard input stream.
 
@@ -672,15 +1131,19 @@ A Windows::Console object that represents the standard input stream.
 
   has In => (
     is        => 'rwp',
-    isa       => sub { assert_InstanceOf $_[0], 'Win32::Console'; },
-    init_arg  => undef,
+    isa       => Object,
+    # init_arg  => undef,
     lazy      => 1,
-    builder   => sub { 
-      my $self = shift;
-      my $_in = $self->OpenStandardInput();
-      return $_in;
-    },
+    default   => &_build_In,
+    # builder   => 1,
   );
+
+  sub _build_In {
+    unless ( defined $_in ) {
+      $_in = __PACKAGE__->OpenStandardInput();
+    }
+    return $_in;
+  }
 
 =item I<InputEncoding>
 
@@ -695,9 +1158,9 @@ current input encoding.
 
   has InputEncoding => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
-    default   => sub { Win32::Console::_GetConsoleCP() },
+    isa       => Int,
+    # init_arg  => undef,
+    default   => sub { Win32::GetConsoleCP() },
   );
 
   around 'InputEncoding' => sub {
@@ -706,17 +1169,39 @@ current input encoding.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      return $self->$orig();
+      return $_inputEncoding
+        if $_inputEncoding;
+
+      {
+        my $cp = Win32::GetConsoleCP();
+        $self->$orig($_inputEncoding = $cp);
+        return $_inputEncoding;
+      }
     }
     SET: {
       my $value = shift;
       if ( !defined $value ) {
-        confess("ArgumentNullException $value");
+        confess("ArgumentNullException: value");
       }
-      Win32::Console::_SetConsoleCP($value)
-        or confess("WinIOError: $EXTENDED_OS_ERROR");
       $self->$orig($value);
-      return;
+
+      {
+        if ( !IsStandardConsoleUnicodeEncoding($value) ) {
+          my $cp = $value;
+          my $r = Win32::SetConsoleCP($cp);
+          if (!$r) {
+            confess("WinIOError: $EXTENDED_OS_ERROR");
+          }
+        }
+
+        $_inputEncoding = $value;
+
+        # We need to reinitialize Console->In in the next call to _in
+        # This will discard the current StreamReader, potentially 
+        # losing buffered data
+        $self->_set_In($self->OpenStandardInput());
+        return;
+      }
     }
   };
 
@@ -731,14 +1216,21 @@ standard error stream.  True if error is redirected; otherwise, false.
 
   has IsErrorRedirected => (
     is        => 'rwp',
-    isa       => sub { assert_Bool $_[0] },
-    init_arg  => undef,
+    isa       => Bool,
+    # init_arg  => undef,
     lazy      => 1,
-    builder   => sub {
-      my $errHndle = Win32::Console::_GetStdHandle(STD_ERROR_HANDLE);
-      return _IsHandleRedirected($errHndle);
-    },
+    default   => &_build_IsErrorRedirected,
+    # builder   => 1,
   );
+
+  sub _build_IsErrorRedirected {
+    if ( !$_stdErrRedirectQueried ) {
+      my $errHndle = Win32::Console::_GetStdHandle(STD_ERROR_HANDLE);
+      my $_isStdErrRedirected = IsHandleRedirected($errHndle);
+      $_stdErrRedirectQueried = TRUE;
+    }
+    return $_isStdErrRedirected;
+  }
 
 =item I<IsInputRedirected>
 
@@ -751,13 +1243,20 @@ standard input stream.  True if input is redirected; otherwise, false.
 
   has IsInputRedirected => (
     is        => 'rwp',
-    isa       => sub { assert_Bool $_[0] },
-    init_arg  => undef,
+    isa       => Bool,
+    # init_arg  => undef,
     lazy      => 1,
-    builder   => sub {
-      return _IsHandleRedirected(_ConsoleInputHandle());
-    },
+    default   => &_build_IsInputRedirected,
+    # builder   => 1,
   );
+
+  sub _build_IsInputRedirected {
+    if ( !$_stdInRedirectQueried ) {
+      $_isStdInRedirected = IsHandleRedirected(ConsoleInputHandle());
+      $_stdInRedirectQueried = TRUE;
+    }
+    return $_isStdInRedirected;
+  }
 
 =item I<IsOutputRedirected>
 
@@ -771,13 +1270,20 @@ standard output stream.  True if output is redirected; otherwise, false.
 
   has IsOutputRedirected => (
     is        => 'rwp',
-    isa       => sub { assert_Bool $_[0] },
-    init_arg  => undef,
+    isa       => Bool,
+    # init_arg  => undef,
     lazy      => 1,
-    builder   => sub {
-      return _IsHandleRedirected(_ConsoleOutputHandle());
-    },
+    default   => &_build_IsOutputRedirected,
+    # builder   => 1,
   );
+
+  sub _build_IsOutputRedirected {
+    if ( !$_stdOutRedirectQueried ) {
+      $_isStdOutRedirected = IsHandleRedirected(ConsoleOutputHandle());
+      $_stdOutRedirectQueried = TRUE;
+    }
+    return $_isStdOutRedirected;
+  }
 
 =item I<KeyAvailable>
 
@@ -789,8 +1295,8 @@ Gets a value indicating whether a key press is available in the input stream.
 
   has KeyAvailable => (
     is        => 'rwp',
-    isa       => sub { assert_Bool $_[0] },
-    init_arg  => undef,
+    isa       => Bool,
+    # init_arg  => undef,
   );
   
   around 'KeyAvailable' => sub {
@@ -798,7 +1304,7 @@ Gets a value indicating whether a key press is available in the input stream.
     my $orig = assert_CodeRef shift;
     my $self = assert_Object shift;
     GET: {
-      if ( $_cachedInputRecord->[_eventType] == KEY_EVENT ) {
+      if ( $_cachedInputRecord->[_eventType] == Win32Native::KEY_EVENT ) {
         $self->_set_KeyAvailable(TRUE);
         return TRUE;
       }
@@ -807,13 +1313,14 @@ Gets a value indicating whether a key press is available in the input stream.
       my $numEventsRead = 0;
       while (TRUE) {
         my $r = do {
-          @ir = Win32::Console::_PeekConsoleInput(_ConsoleInputHandle());
-          $numEventsRead = 1 if @ir > 1;
-          @ir > 1;
+          Win32::SetLastError(0);
+          @ir = Win32::Console::_PeekConsoleInput(ConsoleInputHandle());
+          $numEventsRead = 0 + (@ir > 1);
+          Win32::GetLastError() == 0;
         };
         if ( !$r ) {
           my $errorCode = Win32::GetLastError();
-          if ( $errorCode == ERROR_INVALID_HANDLE ) {
+          if ( $errorCode == Win32Native::ERROR_INVALID_HANDLE ) {
             confess("InvalidOperationException: ConsoleKeyAvailableOnFile");
           }
           confess("WinIOError stdin: $EXTENDED_OS_ERROR");
@@ -825,13 +1332,14 @@ Gets a value indicating whether a key press is available in the input stream.
         }
 
         # Skip non key-down && mod key events.
-        if ( !_IsKeyDownEvent(\@ir) || _IsModKey(\@ir) ) {
+        if ( !IsKeyDownEvent(\@ir) || IsModKey(\@ir) ) {
           #
 
           $r = do {
-            @ir = Win32::Console::_ReadConsoleInput(_ConsoleInputHandle());
-            $numEventsRead = 1 if @ir > 1;
-            @ir > 1;
+            Win32::SetLastError(0);
+            @ir = Win32::Console::_ReadConsoleInput(ConsoleInputHandle());
+            $numEventsRead = 0 + (@ir > 1);
+            Win32::GetLastError() == 0;
           };
 
           if ( !$r ) {
@@ -857,8 +1365,8 @@ font and screen resolution.
 
   has LargestWindowHeight => (
     is        => 'rwp',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'LargestWindowHeight' => sub {
@@ -866,21 +1374,12 @@ font and screen resolution.
     my $orig = assert_CodeRef shift;
     my $self = assert_Object shift;
     GET: {
-      my $height;
-      if ( $self->Out ) {
-        assert { $self->Out->is_valid };
-        (undef, $height) = $self->Out->MaxWindow()
-          or warn $EXTENDED_OS_ERROR;
-        $self->_set_LargestWindowHeight($height);
-      } elsif ( $self->In ) {
-        assert { $self->In->is_valid };
-        (undef, $height) = $self->In->MaxWindow()
-          or warn $EXTENDED_OS_ERROR;
-        $self->_set_LargestWindowHeight($height);
-      } else {
-        $height = $self->$orig();
-      }
-      return $height;
+      # Note this varies based on current screen resolution and 
+      # current console font.  Do not cache this value.
+      my (undef, $bounds_Y) = Win32::Console::_GetLargestConsoleWindowSize(
+        ConsoleOutputHandle());
+      $self->_set_LargestWindowHeight($bounds_Y);
+      return $bounds_Y;
     }
   };
 
@@ -895,8 +1394,8 @@ current font and screen resolution.
 
   has LargestWindowWidth => (
     is        => 'rwp',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'LargestWindowWidth' => sub {
@@ -904,21 +1403,12 @@ current font and screen resolution.
     my $orig = assert_CodeRef shift;
     my $self = assert_Object shift;
     GET: {
-      my $width;
-      if ( $self->Out ) {
-        assert { $self->Out->is_valid };
-        ($width) = $self->Out->MaxWindow()
-          or warn $EXTENDED_OS_ERROR;
-        $self->_set_LargestWindowWidth($width);
-      } elsif ( $self->In ) {
-        assert { $self->In->is_valid };
-        ($width) = $self->In->MaxWindow()
-          or warn $EXTENDED_OS_ERROR;
-        $self->_set_LargestWindowWidth($width);
-      } else {
-        $width = $self->$orig();
-      }
-      return $width;
+      # Note this varies based on current screen resolution and 
+      # current console font.  Do not cache this value.
+      my ($bounds_X) = Win32::Console::_GetLargestConsoleWindowSize(
+        ConsoleOutputHandle());
+      $self->_set_LargestWindowWidth($bounds_X);
+      return $bounds_X;
     }
   };
 
@@ -933,8 +1423,8 @@ turned off.
 
   has NumberLock => (
     is        => 'rwp',
-    isa       => sub { assert_Bool $_[0] },
-    init_arg  => undef,
+    isa       => Bool,
+    # init_arg  => undef,
   );
 
   around 'NumberLock' => sub {
@@ -942,8 +1432,8 @@ turned off.
     my $orig = assert_CodeRef shift;
     my $self = assert_Object shift;
     GET: {
-      my $value = (Win32::Native::GetKeyState(VK_NUMLOCK) & 1) 
-        == 1;
+      require Win32Native;
+      my $value = (Win32Native::GetKeyState(NumberLockVKCode) & 1) == 1;
       $self->_set_NumberLock($value);
       return $value;
     }
@@ -951,7 +1441,7 @@ turned off.
 
 =item I<Out>
 
-  field Out ( is => rwp, type => Win32::Console, lazy => 1, builder => 1 );
+  field Out ( is => rwp, type => Object, lazy => 1, builder => 1 );
 
 A Windows::Console object that represents the standard output stream.
 
@@ -959,16 +1449,20 @@ A Windows::Console object that represents the standard output stream.
 
   has Out => (
     is        => 'rwp',
-    isa       => sub { assert_InstanceOf $_[0], 'Win32::Console'; },
-    init_arg  => undef,
+    isa       => Object,
+    # init_arg  => undef,
     lazy      => 1,
-    builder   => sub {
-      my $self = shift;
-      my $_out = $self->OpenStandardOutput();
-      assert "Didn't set Console::_out appropriately!" { $_out };
-      return $_out;
-    },
+    default   => &_build_Out,
+    # builder   => 1,
   );
+
+  sub _build_Out {
+    unless ( defined $_out ) {
+      $_out = __PACKAGE__->OpenStandardOutput();
+      assert "Didn't set Console::_out appropriately!" { $_out };
+    }
+    return $_out;
+  }
 
 =item I<OutputEncoding>
 
@@ -983,8 +1477,8 @@ current output encoding.
 
   has OutputEncoding => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
     default   => sub { Win32::Console->_GetConsoleOutputCP() },
   );
 
@@ -994,25 +1488,49 @@ current output encoding.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      return $self->$orig();
+      return $_outputEncoding
+        if $_outputEncoding;
+
+      {
+        my $cp = Win32::GetConsoleOutputCP();
+        $self->$orig($_outputEncoding = $cp);
+        return $_outputEncoding;
+      }
     }
     SET: {
       my $value = shift;
       if ( !defined $value ) {
-        confess("ArgumentNullException $value");
+        confess("ArgumentNullException: value");
       }
-      if ( $self->Out && !$self->IsOutputRedirected ) {
-        # Flush works also for stdout
-        # https://stackoverflow.com/a/18389182
-        $self->Out->Flush(); 
-      }
-      if ( $self->Error && !$self->IsErrorRedirected ) {
-        $self->Error->Flush(); 
-      }
-      Win32::Console::_SetConsoleOutputCP($value)
-        or confess("WinIOError: $EXTENDED_OS_ERROR");
       $self->$orig($value);
-      return;
+
+      {
+        # Before changing the code page we need to flush the data 
+        # if Out hasn't been redirected. Also, have the next call to  
+        # _out reinitialize the console code page.
+
+        if ( $self->Out && !$self->IsOutputRedirected ) {
+          # Flush (_FlushConsoleInputBuffer) works also for stdout
+          # https://stackoverflow.com/a/18389182
+          $self->Out->Flush(); 
+          $self->_set_Out($self->OpenStandardOutput());
+        }
+        if ( $self->Error && !$self->IsErrorRedirected ) {
+          $self->Error->Flush(); 
+          $self->_set_Error($self->OpenStandardError());
+        }
+
+        if ( !IsStandardConsoleUnicodeEncoding($value) ) {
+          my $cp = $value;
+          my $r = Win32::SetConsoleOutputCP($cp);
+          if (!$r) {
+            confess("WinIOError: $EXTENDED_OS_ERROR");
+          }
+        }
+
+        $_outputEncoding = $value;
+        return;
+      }
     }
   };
 
@@ -1032,8 +1550,8 @@ I<throws> Exception if in a set operation, the specified title is not a string.
 
   has Title => (
     is        => 'rw',
-    isa       => sub { assert_Str $_[0] },
-    init_arg  => undef,
+    isa       => Str,
+    # init_arg  => undef,
     default   => sub { '' },
   );
 
@@ -1080,8 +1598,8 @@ buffer.
 
   has TreatControlCAsInput => (
     is        => 'rw',
-    isa       => sub { assert_Bool $_[0] },
-    init_arg  => undef,
+    isa       => Bool,
+    # init_arg  => undef,
     default   => sub { FALSE },
   );
 
@@ -1091,15 +1609,15 @@ buffer.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $handle = _ConsoleInputHandle();
-      if ( $handle == INVALID_HANDLE_VALUE ) {
+      my $handle = ConsoleInputHandle();
+      if ( $handle == Win32API::File::INVALID_HANDLE_VALUE ) {
         confess("IOException: NoConsole");
       }
       my $mode = 0;
       my $r = do {
-        local $_ = Win32::Console::_GetConsoleMode($handle);
-        $mode = $_ || 0;
-        !isdual($_);
+        Win32::SetLastError(0);
+        $mode = Win32::Console::_GetConsoleMode($handle) || 0;
+        Win32::GetLastError() == 0;
       };
       if (!$r) {
         confess("WinIOError: $EXTENDED_OS_ERROR");
@@ -1110,15 +1628,15 @@ buffer.
     }
     SET: {
       my $value = shift;
-      my $handle = _ConsoleInputHandle();
-      if ( $handle == INVALID_HANDLE_VALUE ) {
+      my $handle = ConsoleInputHandle();
+      if ( $handle == Win32API::File::INVALID_HANDLE_VALUE ) {
         confess("IOException: NoConsole");
       }
       my $mode = 0;
       my $r = do {
-        local $_ = Win32::Console::_GetConsoleMode($handle);
-        $mode = $_ || 0;
-        !isdual($_);
+        Win32::SetLastError(0);
+        $mode = Win32::Console::_GetConsoleMode($handle) || 0;
+        Win32::GetLastError() == 0;
       };
       if ( $value ) {
         $mode &= ~ENABLE_PROCESSED_INPUT;
@@ -1151,8 +1669,8 @@ I<throws> Exception if an error occurs when reading or writing information.
 
   has WindowHeight => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'WindowHeight' => sub {
@@ -1161,7 +1679,7 @@ I<throws> Exception if an error occurs when reading or writing information.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $csbi = _GetBufferInfo();
+      my $csbi = GetBufferInfo();
       my $value = $csbi->{srWindow}->{Bottom} - $csbi->{srWindow}->{Top} + 1;
       $self->$orig($value);
       return $value;
@@ -1189,12 +1707,8 @@ I<throws> Exception if an error occurs when reading or writing information.
 
   has WindowLeft => (
     is        => 'rw',
-    isa       => sub { 
-      assert_Int $_[0];
-      confess('ArgumentOutOfRangeException: ' . $_[0])
-        if STRICT && $_[0] < 0;
-    },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'WindowLeft' => sub {
@@ -1203,7 +1717,7 @@ I<throws> Exception if an error occurs when reading or writing information.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $csbi = _GetBufferInfo();
+      my $csbi = GetBufferInfo();
       my $value = $csbi->{srWindow}->{Left};
       $self->$orig($value);
       return $value;
@@ -1231,8 +1745,8 @@ I<throws> Exception if an error occurs when reading or writing information.
 
   has WindowTop => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'WindowTop' => sub {
@@ -1241,7 +1755,7 @@ I<throws> Exception if an error occurs when reading or writing information.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $csbi = _GetBufferInfo();
+      my $csbi = GetBufferInfo();
       my $value = $csbi->{srWindow}->{Top};
       $self->$orig($value);
       return $value;
@@ -1270,8 +1784,8 @@ I<throws> Exception if an error occurs when reading or writing information.
 
   has WindowWidth => (
     is        => 'rw',
-    isa       => sub { assert_Int $_[0] },
-    init_arg  => undef,
+    isa       => Int,
+    # init_arg  => undef,
   );
 
   around 'WindowWidth' => sub {
@@ -1280,7 +1794,7 @@ I<throws> Exception if an error occurs when reading or writing information.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $csbi = _GetBufferInfo();
+      my $csbi = GetBufferInfo();
       my $value = $csbi->{srWindow}->{Right} - $csbi->{srWindow}->{Left} + 1;
       $self->$orig($value);
       return $value;
@@ -1312,6 +1826,16 @@ I<throws> Exception if an error occurs when reading or writing information.
 
 Public constructor.
 
+=cut
+
+  sub BUILD {
+    assert { @_ >= 2 };
+    assert { is_Object($_[0]) };
+
+    # _init();
+    return;
+  }
+
 =item I<instance>
 
   factory instance() : System::Console
@@ -1323,12 +1847,17 @@ It is used to initialize the default I/O console.
 
 =cut
 
-  sub BUILD {
-    assert { @_ >= 2 };
-    assert { is_Object $_[0] };
-
-    _init();
-    return;
+  sub instance {
+    assert { @_ == 1 };
+    my $class = shift;
+    # already got an object
+    return $class if ref $class;
+    # store the instance against the $class key of %_INSTANCES
+    my $instance = $_INSTANCES{$class};
+    unless (defined $instance) {
+      $_INSTANCES{$class} = $instance = $class->new();
+    }
+    return $instance;
   }
 
 =back
@@ -1353,10 +1882,20 @@ Restore the console before destroying the instance/object.
 
   sub DEMOLISH {
     assert { @_ >= 1 };
-    assert { is_Object $_[0] };
+    assert { is_Object($_[0]) };
 
-    _done();
+    # _done();
     return;
+  }
+
+  #
+  # END block to explicitly destroy all Singleton objects since
+  # destruction order at program exit is not predictable.
+  # see CPAN RT #23568 and #68526 for examples
+  #
+  END {
+    # dereferences and causes orderly destruction of all instances
+    undef(%_INSTANCES);
   }
 
 =back
@@ -1408,7 +1947,8 @@ than 32767 hertz or $duration is less than or equal to zero.
 
     # Note that Beep over Remote Desktop connections does not currently
     # work.  Ignore any failures here.
-    Win32::Native::Beep($frequency, $duration);
+    require Win32Native;
+    Win32Native::Beep($frequency, $duration);
     return;
   }
 
@@ -1432,15 +1972,15 @@ I<throws> IOException if an I/O error occurred.
     my $conSize;
     my $success;
 
-    my $hConsole = _ConsoleOutputHandle();
-    if ( $hConsole == INVALID_HANDLE_VALUE ) {
+    my $hConsole = ConsoleOutputHandle();
+    if ( $hConsole == Win32API::File::INVALID_HANDLE_VALUE ) {
       confess("IOException: NoConsole");
     }
 
     # get the number of character cells in the current buffer
     # Go through my helper method for fetching a screen buffer info
     # to correctly handle default console colors.
-    $csbi = _GetBufferInfo();
+    $csbi = GetBufferInfo();
     $conSize = $csbi->{dwSize}->{X} * $csbi->{dwSize}->{Y};
 
     # fill the entire screen with blanks
@@ -1603,15 +2143,15 @@ $sourceHeight is zero.
     my $sourceBackColor = @_ ? assert_Int(shift) : $self->BackgroundColor;
 
     if ($sourceForeColor < 0 || $sourceForeColor > 15 ) {
-      confess("ArgumentException: InvalidConsoleColor sourceForeColor " . 
+      confess("ArgumentException: InvalidConsoleColor sourceForeColor %d",
         $sourceForeColor);
     }
     if ( $sourceBackColor < 0 || $sourceBackColor > 15 ) {
-      confess("ArgumentException: InvalidConsoleColor sourceBackColor " . 
+      confess("ArgumentException: InvalidConsoleColor sourceBackColor %d",
         $sourceBackColor);
     }
 
-    my $csbi = _GetBufferInfo();
+    my $csbi = GetBufferInfo();
     my $bufferSize = $csbi->{dwSize};
     if ($sourceLeft < 0 || $sourceLeft > $bufferSize->{X}) {
       confess("ArgumentOutOfRangeException: sourceLeft $sourceLeft " . 
@@ -1664,7 +2204,7 @@ $sourceHeight is zero.
     $readRegion->{Bottom} = $sourceTop + $sourceHeight - 1;
 
     my $r;
-    $r = Win32::Console::_ReadConsoleOutput(_ConsoleOutputHandle(), $data,
+    $r = Win32::Console::_ReadConsoleOutput(ConsoleOutputHandle(), $data,
       $bufferSize->{X}, $bufferSize->{Y}, 
       $bufferCoord->{X}, $bufferCoord->{Y}, 
       $readRegion->{Left}, $readRegion->{Top}, 
@@ -1678,19 +2218,19 @@ $sourceHeight is zero.
     # I don't have a good function to blank out a rectangle.
     my $writeCoord = { X => 0, Y => 0 };
     $writeCoord->{X} = $sourceLeft;
-    my $c = _ConsoleColorToColorAttribute($sourceBackColor, TRUE);
-    $c |= _ConsoleColorToColorAttribute($sourceForeColor, FALSE);
+    my $c = ConsoleColorToColorAttribute($sourceBackColor, TRUE);
+    $c |= ConsoleColorToColorAttribute($sourceForeColor, FALSE);
     my $attr = $c;
     my $numWritten;
     for (my $i = $sourceTop; $i < $sourceTop + $sourceHeight; $i++) {
       $writeCoord->{Y} = $i;
       $r = do {
-        local $_ = Win32::Console::_FillConsoleOutputCharacter(
-          _ConsoleOutputHandle(), $sourceChar, $sourceWidth,
+        Win32::SetLastError(0);
+        $numWritten = Win32::Console::_FillConsoleOutputCharacter(
+          ConsoleOutputHandle(), $sourceChar, $sourceWidth,
           $writeCoord->{X}, $writeCoord->{Y}
-        );
-        $numWritten = $_ || 0;
-        !isdual($_);
+        ) || 0;
+        Win32::GetLastError() == 0;
       };
       assert "FillConsoleOutputCharacter wrote the wrong number of chars!"
         { $numWritten == $sourceWidth };
@@ -1698,12 +2238,12 @@ $sourceHeight is zero.
         confess("WinIOError: $EXTENDED_OS_ERROR");
       }
       $r = do {
-        local $_ = Win32::Console::_FillConsoleOutputAttribute(
+        Win32::SetLastError(0);
+        $numWritten = Win32::Console::_FillConsoleOutputAttribute(
           ConsoleOutputHandle(), $attr, $sourceWidth,
           $writeCoord->{X}, $writeCoord->{Y}
-        );
-        $numWritten = $_ || 0;
-        !isdual($_);
+        ) || 0;
+        Win32::GetLastError() == 0;
       };
       if (!$r) {
         confess("WinIOError: $EXTENDED_OS_ERROR");
@@ -1718,7 +2258,7 @@ $sourceHeight is zero.
     $writeRegion->{Bottom} = $targetTop + $sourceHeight;
 
     $r = Win32::Console::_WriteConsoleOutput(
-      _ConsoleOutputHandle(), $data, 
+      ConsoleOutputHandle(), $data, 
       $bufferSize->{X}, $bufferSize->{Y}, 
       $bufferCoord->{X}, $bufferCoord->{Y}, 
       $writeRegion->{Left}, $writeRegion->{Top}, 
@@ -1739,7 +2279,7 @@ I<return> the standard error object.
 
   sub OpenStandardError {
     assert { @_ == 1 };
-    assert { is_ClassName($_[0]) || is_Object($_[0]) };
+    assert { $_[0] eq __PACKAGE__ || is_Object($_[0]) };
     return Win32::Console->new(STD_ERROR_HANDLE);
   }
 
@@ -1755,7 +2295,7 @@ I<return> the standard input object.
 
   sub OpenStandardInput {
     assert { @_ == 1 };
-    assert { is_ClassName($_[0]) || is_Object($_[0]) };
+    assert { $_[0] eq __PACKAGE__ || is_Object($_[0]) };
     return Win32::Console->new(STD_INPUT_HANDLE);
   }
 
@@ -1771,7 +2311,7 @@ I<return> the standard output object.
 
   sub OpenStandardOutput {
     assert { @_ == 1 };
-    assert { is_ClassName($_[0]) || is_Object($_[0]) };
+    assert { $_[0] eq __PACKAGE__ || is_Object($_[0]) };
     return Win32::Console->new(STD_OUTPUT_HANDLE);
   }
 
@@ -1789,7 +2329,7 @@ there are currently no more characters to be read.
   sub Read {
     assert { @_ == 1 };
     my $self = assert_Object shift;
-    assert { is_Object $self->In };
+    assert { is_Object($self->In) };
 
     my $ch = $self->In->InputChar();
     return defined($ch) ? ord($ch) : -1;
@@ -1810,7 +2350,7 @@ I<throws> IOException if an I/O error occurred.
     my $self = assert_Object shift;
 
     my $succeeded;
-    my $csbi = _GetBufferInfo(FALSE, $succeeded);
+    my $csbi = GetBufferInfo(FALSE, $succeeded);
     return if !$succeeded;
 
     assert "Setting the color attributes before we've read the default color attributes!"
@@ -1819,7 +2359,7 @@ I<throws> IOException if an I/O error occurred.
     my $attr = $ATTR_NORMAL;
     # Ignore errors here - there are some scenarios for running code that wants
     # to print in colors to the console in a Windows application.
-    Win32::Console::_SetConsoleTextAttribute(_ConsoleOutputHandle(), $attr);
+    Win32::Console::_SetConsoleTextAttribute(ConsoleOutputHandle(), $attr);
     return;
   }
 
@@ -1850,7 +2390,7 @@ modifier keys was pressed simultaneously with the console key.
     my $numEventsRead = -1;
     my $r;
 
-    if ( $_cachedInputRecord->[_eventType] == KEY_EVENT ) {
+    if ( $_cachedInputRecord->[_eventType] == Win32Native::KEY_EVENT ) {
       # We had a previous keystroke with repeated characters.
       @ir = @$_cachedInputRecord;
       if ( $_cachedInputRecord->[_repeatCount] == 0 ) {
@@ -1865,9 +2405,10 @@ modifier keys was pressed simultaneously with the console key.
 
       while (TRUE) {
         $r = do {
-          @ir = Win32::Console::_ReadConsoleInput(_ConsoleInputHandle());
-          $numEventsRead = 1 if @ir > 1;
-          @ir > 1;
+          Win32::SetLastError(0);
+          @ir = Win32::Console::_ReadConsoleInput(ConsoleInputHandle());
+          $numEventsRead = 0 + (@ir > 1);
+          Win32::GetLastError() == 0;
         };
         if ( !$r || $numEventsRead == 0 ) {
           # This will fail when stdin is redirected from a file or pipe.
@@ -1884,9 +2425,9 @@ modifier keys was pressed simultaneously with the console key.
         # key is down, we should eat up any intermediate key strokes (from 
         # NumPad) that collectively forms the Unicode character.  
 
-        if ( _IsKeyDownEvent(\@ir) ) {
+        if ( IsKeyDownEvent(\@ir) ) {
           #
-          next if $keyCode != VK_MENU;
+          next if $keyCode != AltVKCode;
         }
 
         my $ch = $ir[_uChar];
@@ -1901,14 +2442,14 @@ modifier keys was pressed simultaneously with the console key.
 
         if ( $ch == 0 ) {
           # Skip mod keys.
-          next if _IsModKey(\@ir);
+          next if IsModKey(\@ir);
         }
 
         # When Alt is down, it is possible that we are in the middle of a 
         # Alt+NumPad unicode sequence. Escape any intermediate NumPad keys 
         # whether NumLock is on or not (notepad behavior)
         my $key = $keyCode;
-        if (_IsAltKeyDown(\@ir) && (($key >= VK_NUMPAD0 && $key <= VK_NUMPAD9)
+        if (IsAltKeyDown(\@ir)  && (($key >= VK_NUMPAD0 && $key <= VK_NUMPAD9)
                                 || ($key == VK_CLEAR) || ($key == VK_INSERT)
                                 || ($key >= VK_PRIOR && $key <= VK_NEXT))
         ) {
@@ -1957,7 +2498,7 @@ is greater than 0x7fff.
   sub ReadLine {
     assert { @_ == 1 };
     my $self = assert_Object shift;
-    assert { is_Object $self->In };
+    assert { is_Object($self->In) };
 
     my $str = '';
     while (TRUE) {
@@ -1991,7 +2532,7 @@ I<param> $height of the buffer area measured in rows.
     my $width = assert_Int shift;
     my $height = assert_Int shift;
 
-    my $csbi = _GetBufferInfo();
+    my $csbi = GetBufferInfo();
     my $srWindow = $csbi->{srWindow};
     if ( $width < $srWindow->{Right} + 1 || $width >= 0x7fff ) {
       confess("ArgumentOutOfRangeException: width $width " . 
@@ -2001,7 +2542,7 @@ I<param> $height of the buffer area measured in rows.
       confess("ArgumentOutOfRangeException: height $height " . 
         "ConsoleBufferLessThanWindowSize");
     }
-    Win32::Console::_SetConsoleScreenBufferSize(_ConsoleOutputHandle(), 
+    Win32::Console::_SetConsoleScreenBufferSize(ConsoleOutputHandle(), 
       $width, $height) or confess("WinIOError: $EXTENDED_OS_ERROR");
 
     $self->{BufferHeight} = $height;
@@ -2041,12 +2582,12 @@ starting at 0.
         "ConsoleBufferBoundaries");
     }
 
-    my $hConsole = _ConsoleOutputHandle();
+    my $hConsole = ConsoleOutputHandle();
     my $r = Win32::Console::_SetConsoleCursorPosition($hConsole, $left, $top);
     if ( !$r ) {
       # Give a nice error message for out of range sizes
       my $errorCode = Win32::GetLastError();
-      my $csbi = _GetBufferInfo();
+      my $csbi = GetBufferInfo();
       if ( $left < 0 || $left >= $csbi->{dwSize}->{X} ) {
         confess("ArgumentOutOfRangeException: left $left " . 
           "ConsoleBufferBoundaries");
@@ -2159,15 +2700,16 @@ I<param> $height of the console window measured in rows.
     }
     
     # Get the position of the current console window
-    my $csbi = _GetBufferInfo();
+    my $csbi = GetBufferInfo();
     my $r;
 
     # If the buffer is smaller than this new window size, resize the
     # buffer to be large enough.  Include window position.
     my $resizeBuffer = FALSE;
-    my $size = {};
-    $size->{X} = $csbi->{dwSize}->{X};
-    $size->{Y} = $csbi->{dwSize}->{Y};
+    my $size = {
+      X => $csbi->{dwSize}->{X},
+      Y => $csbi->{dwSize}->{Y},
+    };
     if ( $csbi->{dwSize}->{X} < $csbi->{srWindow}->{Left} + $width ) {
       if ( $csbi->{srWindow}->{Left} >= 0x7fff - $width ) {
         confess("ArgumentOutOfRangeException: width $width " . 
@@ -2185,7 +2727,7 @@ I<param> $height of the console window measured in rows.
       $resizeBuffer = TRUE;
     }
     if ( $resizeBuffer ) {
-      $r = Win32::Console::_SetConsoleScreenBufferSize(_ConsoleOutputHandle(), 
+      $r = Win32::Console::_SetConsoleScreenBufferSize(ConsoleOutputHandle(), 
         $size->{X}, $size->{Y});
       if (!$r) {
         confess("WinIOError: $EXTENDED_OS_ERROR");
@@ -2197,7 +2739,7 @@ I<param> $height of the console window measured in rows.
     $srWindow->{Bottom} = $srWindow->{Top} + $height - 1;
     $srWindow->{Right} = $srWindow->{Left} + $width - 1;
 
-    $r = Win32::Console::_SetConsoleWindowInfo(_ConsoleOutputHandle(), TRUE, 
+    $r = Win32::Console::_SetConsoleWindowInfo(ConsoleOutputHandle(), TRUE, 
       $srWindow->{Left}, $srWindow->{Top}, 
       $srWindow->{Right}, $srWindow->{Bottom}
     );
@@ -2206,24 +2748,24 @@ I<param> $height of the console window measured in rows.
 
       # If we resized the buffer, un-resize it.
       if ( $resizeBuffer ) {
-        Win32::Console::_SetConsoleScreenBufferSize(_ConsoleOutputHandle(), 
+        Win32::Console::_SetConsoleScreenBufferSize(ConsoleOutputHandle(), 
           $csbi->{dwSize}->{X}, $csbi->{dwSize}->{Y});
       }
 
       # Try to give a better error message here
       my $bounds = { X => 0, Y => 0 };
       ($bounds->{X}, $bounds->{Y}) = 
-        Win32::Console::_GetLargestConsoleWindowSize(_ConsoleOutputHandle());
+        Win32::Console::_GetLargestConsoleWindowSize(ConsoleOutputHandle());
       if ( $width > $bounds->{X} ) {
         confess("ArgumentOutOfRangeException: width $width " . 
-          "ConsoleWindowSize size " . $bounds->{X});
+          "ConsoleWindowSize size %d", $bounds->{X});
       }
       if ( $height > $bounds->{Y} ) {
         confess("ArgumentOutOfRangeException: height $height " . 
-          "ConsoleWindowSize size ", $bounds->{Y});
+          "ConsoleWindowSize size %d", $bounds->{Y});
       }
 
-      confess("WinIOError: " . Win32::FormatMessage($errorCode));
+      confess("WinIOError: %s", Win32::FormatMessage($errorCode));
     }
 
     if ( $resizeBuffer ) {
@@ -2257,7 +2799,7 @@ I<param> $top corner of the console window.
     my $top = assert_Int shift;
 
     # Get the size of the current console window
-    my $csbi = _GetBufferInfo();
+    my $csbi = GetBufferInfo();
 
     my $srWindow = $csbi->{srWindow};
 
@@ -2487,15 +3029,32 @@ stream.
 
 =begin private
 
-=item I<_ColorAttributeToConsoleColor>
+=cut
 
-  sub _ColorAttributeToConsoleColor(Int $c) : Int
+  use namespace::sweep -also => [qw(
+    ColorAttributeToConsoleColor
+    ConsoleColorToColorAttribute
+    ConsoleInputHandle
+    ConsoleOutputHandle
+    GetBufferInfo
+    IsAltKeyDown
+    IsKeyDownEvent
+    IsHandleRedirected
+    IsModKey
+    IsStandardConsoleUnicodeEncoding
+    _init
+    _done
+  )];
+
+=item I<ColorAttributeToConsoleColor>
+
+  sub ColorAttributeToConsoleColor(Int $c) : Int
 
 Converts the standard color index to the Wiondows color attribute.
 
 =cut
 
-  sub _ColorAttributeToConsoleColor($) :Private {
+  sub ColorAttributeToConsoleColor {
     assert { @_ == 1 };
     my $c = assert_Int shift;
 
@@ -2507,15 +3066,15 @@ Converts the standard color index to the Wiondows color attribute.
     return $c;
   }
 
-=item I<_ColorAttributeToConsoleColor>
+=item I<ColorAttributeToConsoleColor>
 
-  sub _ConsoleColorToColorAttribute(Int $color, Bool $isBackground) : Int
+  sub ConsoleColorToColorAttribute(Int $color, Bool $isBackground) : Int
 
 Converts the Windows color attribute to the standard color index.
 
 =cut
 
-  sub _ConsoleColorToColorAttribute($$) :Private {
+  sub ConsoleColorToColorAttribute {
     assert { @_ == 2 };
     my $color = assert_Int shift;
     my $isBackground = assert_Bool shift;
@@ -2533,46 +3092,46 @@ Converts the Windows color attribute to the standard color index.
     return $c;
   }
 
-=item I<_ConsoleInputHandle>
+=item I<ConsoleInputHandle>
 
-  sub _ConsoleInputHandle() : Int
+  sub ConsoleInputHandle() : Int
 
 Simplifies the use of GetStdHandle(STD_INPUT_HANDLE).
 
 =cut
 
-  sub _ConsoleInputHandle() :Private {
+  sub ConsoleInputHandle {
     assert { @_ == 0 };
     $_consoleInputHandle = Win32::Console::_GetStdHandle(STD_INPUT_HANDLE) 
       unless defined $_consoleInputHandle;
     return $_consoleInputHandle;
   }
 
-=item I<_ConsoleOutputHandle>
+=item I<ConsoleOutputHandle>
 
-  sub _ConsoleOutputHandle() : Int
+  sub ConsoleOutputHandle() : Int
 
 Simplifies the use of GetStdHandle(STD_OUTPUT_HANDLE).
 
 =cut
 
-  sub _ConsoleOutputHandle() :Private {
+  sub ConsoleOutputHandle {
     assert { @_ == 0 };
     $_consoleOutputHandle = Win32::Console::_GetStdHandle(STD_OUTPUT_HANDLE)
       unless defined $_consoleOutputHandle;
     return $_consoleOutputHandle;
   }
 
-=item I<_GetBufferInfo>
+=item I<GetBufferInfo>
 
-  sub _GetBufferInfo() : HashRef
-  sub _GetBufferInfo(Bool $throwOnNoConsole, Bool $succeeded) : HashRef
+  sub GetBufferInfo() : HashRef
+  sub GetBufferInfo(Bool $throwOnNoConsole, Bool $succeeded) : HashRef
 
 Simplifies the use of GetConsoleScreenBufferInfo().
 
 =cut
 
-  sub _GetBufferInfo(;$$) :Private {
+  sub GetBufferInfo {
     state $CONSOLE_SCREEN_BUFFER_INFO = {
       dwSize => {
         X => 0,
@@ -2598,8 +3157,8 @@ Simplifies the use of GetConsoleScreenBufferInfo().
     my ( $throwOnNoConsole, $succeeded );
     if ( @_ ) {
       assert { @_ == 2 };
-      assert { is_Bool $_[0] };
-      assert { is_Bool $_[1] };
+      assert { is_Bool($_[0]) };
+      assert { is_Bool($_[1]) };
       $throwOnNoConsole = $_[0];
       $succeeded = \$_[1];
     }
@@ -2612,9 +3171,10 @@ Simplifies the use of GetConsoleScreenBufferInfo().
 
     $$succeeded = FALSE;
     my @csbi;
+    my $success;
 
-    my $hConsole = _ConsoleOutputHandle();
-    if ( $hConsole == INVALID_HANDLE_VALUE ) {
+    my $hConsole = ConsoleOutputHandle();
+    if ( $hConsole == Win32API::File::INVALID_HANDLE_VALUE ) {
       if ( !$throwOnNoConsole ) {
         return { %$CONSOLE_SCREEN_BUFFER_INFO };
       }
@@ -2622,27 +3182,42 @@ Simplifies the use of GetConsoleScreenBufferInfo().
         confess("IOException: NoConsole");
       }
     }
-    @csbi = Win32::Console::_GetConsoleScreenBufferInfo($hConsole);
-    if ( @csbi == 0 ) {
-      @csbi = Win32::Console::_GetConsoleScreenBufferInfo(
-        Win32::Console::_GetStdHandle(STD_ERROR_HANDLE)
-      );
-      if ( @csbi == 0 ) {
+
+    # Note that if stdout is redirected to a file, the console handle
+    # may be a file.  If this fails, try stderr and stdin.
+    $success = do {
+      @csbi = Win32::Console::_GetConsoleScreenBufferInfo($hConsole);
+      @csbi > 1;
+    };
+    if ( !$success ) {
+      $success = do {
         @csbi = Win32::Console::_GetConsoleScreenBufferInfo(
-          Win32::Console::_GetStdHandle(STD_INPUT_HANDLE)
+          Win32::Console::_GetStdHandle(STD_ERROR_HANDLE)
         );
+        @csbi > 1;
+      };
+      if ( !$success ) {
+        $success = do {
+          @csbi = Win32::Console::_GetConsoleScreenBufferInfo(
+            Win32::Console::_GetStdHandle(STD_INPUT_HANDLE)
+          );
+          @csbi > 1;
+        };
       }
-    }
-    if ( @csbi == 0 ) {
-      my $errorCode = Win32::GetLastError();
-      if ( $errorCode == ERROR_INVALID_HANDLE && !$throwOnNoConsole) {
-        return { %$CONSOLE_SCREEN_BUFFER_INFO };
+
+      if ( !$success ) {
+        my $errorCode = Win32::GetLastError();
+        if ( $errorCode == Win32Native::ERROR_INVALID_HANDLE && !$throwOnNoConsole) {
+          return { %$CONSOLE_SCREEN_BUFFER_INFO };
+        }
+        confess("WinIOError: $EXTENDED_OS_ERROR");
       }
-      confess("WinIOError: $EXTENDED_OS_ERROR");
     }
 
     if ( !$_haveReadDefaultColors ) {
-      $ATTR_NORMAL = $csbi[4]; # wAttributes
+      # Fetch the default foreground and background color for the
+      # ResetColor method.
+      $ATTR_NORMAL = $csbi[4] & 0xff;
       $_haveReadDefaultColors = TRUE;
     }
 
@@ -2670,9 +3245,9 @@ Simplifies the use of GetConsoleScreenBufferInfo().
     }
   }
 
-=item I<_IsAltKeyDown>
+=item I<IsAltKeyDown>
 
-  sub _IsAltKeyDown(ArrayRef $ir) : Bool
+  sub IsAltKeyDown(ArrayRef $ir) : Bool
 
 For tracking Alt+NumPad unicode key sequence.
 
@@ -2683,7 +3258,7 @@ For tracking Alt+NumPad unicode key sequence.
   # desired effect is to translate the sequence into one Unicode KeyPress. 
   # We need to keep track of the Alt+NumPad sequence and surface the final
   # unicode char alone when the Alt key is released. 
-  sub _IsAltKeyDown($) :Private { 
+  sub IsAltKeyDown { 
     assert { @_ == 1 };
     my $ir = assert_ArrayRef shift;
 
@@ -2691,9 +3266,9 @@ For tracking Alt+NumPad unicode key sequence.
       & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED)) != 0;
   }
 
-=item I<_IsKeyDownEvent>
+=item I<IsKeyDownEvent>
 
-  sub _IsKeyDownEvent(ArrayRef $ir) : Bool
+  sub IsKeyDownEvent(ArrayRef $ir) : Bool
 
 To detect pure KeyDown events.
 
@@ -2704,31 +3279,33 @@ To detect pure KeyDown events.
   # where the assumption of KeyDown-KeyUp pairing for a given key press 
   # is invalid. For example in IME Unicode keyboard input, we often see
   # only KeyUp until the key is released.  
-  sub _IsKeyDownEvent($) :Private {
+  sub IsKeyDownEvent {
     assert { @_ == 1 };
     my $ir = assert_ArrayRef shift;
 
-    return $ir->[_eventType] == KEY_EVENT && $ir->[_keyDown];
+    return $ir->[_eventType] == Win32Native::KEY_EVENT && $ir->[_keyDown];
   }
 
-=item I<_IsHandleRedirected>
+=item I<IsHandleRedirected>
 
-  sub _IsHandleRedirected(Int $ioHandle) : Bool
+  sub IsHandleRedirected(Int $ioHandle) : Bool
 
 Detects if a console handle has been redirected.
 
 =cut
 
-  sub _IsHandleRedirected($) :Private {
+  sub IsHandleRedirected {
     assert { @_ == 1 };
     my $ioHandle = assert_Int shift;
 
     assert { $ioHandle };
-    assert { $ioHandle != INVALID_HANDLE_VALUE };
+    assert { $ioHandle != Win32API::File::INVALID_HANDLE_VALUE };
 
     # If handle is not to a character device, we must be redirected:
     my $fileType = Win32API::File::GetFileType($ioHandle) // 0;
-    if ( ($fileType & FILE_TYPE_CHAR) != FILE_TYPE_CHAR ) {
+    if ( ($fileType & Win32API::File::FILE_TYPE_CHAR) 
+      != Win32API::File::FILE_TYPE_CHAR 
+    ) {
       return TRUE;
     }
 
@@ -2736,21 +3313,22 @@ Detects if a console handle has been redirected.
     # If GetConsoleMode succeeds, we are NOT redirected.
     my $mode;
     my $success = do {
-      $mode = Win32::Console::_GetConsoleMode($ioHandle);
-      !(isdual($mode) && $mode eq '');
+      Win32::SetLastError(0);
+      $mode = Win32::Console::_GetConsoleMode($ioHandle) || 0;
+      Win32::GetLastError() == 0;
     };
     return !$success;
   };
 
-=item I<_IsModKey>
+=item I<IsModKey>
 
-  sub _IsModKey(ArrayRef $ir) : Bool
+  sub IsModKey(ArrayRef $ir) : Bool
 
 Detects if the KeyEvent uses a mod key.
 
 =cut
 
-  sub _IsModKey($) :Private {
+  sub IsModKey {
     assert { @_ == 1 };
     my $ir = assert_ArrayRef shift;
 
@@ -2759,10 +3337,29 @@ Detects if the KeyEvent uses a mod key.
     # like Left Control & Right Control. See the Microsoft 'ConsoleKey' for 
     # these values.
     my $keyCode = $ir->[_virtualKeyCode];
-    return  ($keyCode >= VK_SHIFT && $keyCode <= VK_MENU) 
-          || $keyCode == VK_CAPITAL 
-          || $keyCode == VK_NUMLOCK 
+    return  ($keyCode >= VK_SHIFT && $keyCode <= AltVKCode) 
+          || $keyCode == CapsLockVKCode 
+          || $keyCode == NumberLockVKCode 
           || $keyCode == VK_SCROLL
+  }
+
+=item I<IsStandardConsoleUnicodeEncoding>
+
+  sub IsStandardConsoleUnicodeEncoding(Int $encoding) : Bool
+
+We cannot simply compare the encoding to Unicode because it incorporates BOM 
+and we do not care about BOM. Instead, we compare the codepage only.
+
+=cut
+
+  sub IsStandardConsoleUnicodeEncoding {
+    assert { @_ == 1 };
+    my $encoding = assert_Int shift;
+
+    my $enc = $encoding;
+    return FALSE if !$enc;
+
+    return 65000 == $enc;
   }
 
 =item I<_init>
@@ -2774,44 +3371,158 @@ changed by this console.
 
 =cut
 
-  sub _init() :Private {
+  #
+  # The console can be accessed in two ways: through GetStdHandle() or through
+  # CreateFile(). GetStdHandle() will be unable to return a console handle
+  # if standard handles have been redirected.
+  #
+  # Additionally, we want to spawn a new console when none is visible to the user.
+  # This might happen under two circumstances:
+  #
+  # 1. The console crashed. This is easy to detect because all console operations
+  #    fail on the console handles.
+  # 2. The console exists somehow but cannot be made visible, not even by doing
+  #    GetConsoleWindow() and then ShowWindow(SW_SHOW). This is what happens
+  #    under Git Bash without pseudoconsole support. In this case, none of the
+  #    standard handles is a console, yet the handles returned by CreateFile()
+  #    still work.
+  #
+  # So, in order to find out if a console needs to be allocated, we
+  # check whether at least of the standard handles is a console. If none
+  # of them is, we allocate a new console. Yes, this will always spawn a
+  # console if all three standard handles are redirected, but this is not
+  # a common use case.
+  #
+  # Then comes the question of whether to access the console through GetStdHandle()
+  # or through CreateFile(). CreateFile() has the advantage of not being affected
+  # by standard handle redirection. However, I have found that some terminal
+  # emulators (i.e. ConEmu) behave unexpectedly when using screen buffers
+  # opened with CreateFile(). So we will use the standard handles whenever possible.
+  #
+  # It is worth mentioning that the handles returned by CreateFile() have to be
+  # closed, but the ones returned by GetStdHandle() must not. So we have to remember
+  # this information for each console handle.
+  #
+  # We also need to remember whether we allocated a console or not, so that
+  # we can free it when tearing down. If we don't, weird things may happen.
+  #
+  sub _init {
     assert { @_ == 0 };
 
     return if $_initialized;
+
+    my $isValid = sub {
+      my ($handle) = @_;
+      return $handle
+          && $handle != Win32API::File::INVALID_HANDLE_VALUE;
+    };
+    my $isConsole = sub {
+      my ($handle) = @_;
+      return !!Win32::Console::_GetConsoleMode($handle);
+    };
+
+    my $handle;
+    my $haveConsole = FALSE;
+
+    $handle = ConsoleInputHandle();
+    if ( $isConsole->($handle) ) {
+      $haveConsole = TRUE;
+    }
+
+    $handle = ConsoleOutputHandle();
+    if ( $isConsole->($handle) ) {
+      $haveConsole = TRUE;
+      if ( !$isValid->($_consoleStartupHandle) ) {
+        $_consoleStartupHandle = $handle;
+      }
+    }
+
+    $handle = Win32::Console::_GetStdHandle(STD_ERROR_HANDLE);
+    if ( $isConsole->($handle) ) {
+      $haveConsole = TRUE;
+      if ( !$isValid->($_consoleStartupHandle) ) {
+        $_consoleStartupHandle = $handle;
+      }
+    }
+
+    if ( !$haveConsole ) {
+      Win32::Console::Free();
+      Win32::Console::Alloc();
+      $_ownsConsole = TRUE;
+    }
+
+    if ( !$isValid->($_consoleInputHandle) ) {
+      $_consoleInputHandle = Win32API::File::createFile(
+        'CONIN$',
+        {
+          Access => GENERIC_READ | GENERIC_WRITE,
+          Share  => FILE_SHARE_READ,
+          Create => Win32API::File::OPEN_EXISTING,
+        }
+      );
+      $_owningInputHandle = TRUE;
+    }
+
+    if ( !$isValid->($_consoleStartupHandle) ) {
+      $_consoleStartupHandle = Win32API::File::createFile(
+        'CONOUT$',
+        {
+          Access => GENERIC_READ | GENERIC_WRITE,
+          Share  => FILE_SHARE_WRITE,
+          Create => Win32API::File::OPEN_EXISTING,
+        }
+      );
+      $_owningStartupHandle = TRUE;
+    }
+
+    $_consoleOutputHandle = Win32::Console::_CreateConsoleScreenBuffer(
+      GENERIC_READ | GENERIC_WRITE,
+      0,
+      CONSOLE_TEXTMODE_BUFFER
+    );
+    $_owningOutputHandle = TRUE;
+
+    {
+      my @sbInfo = Win32::Console::_GetConsoleScreenBufferInfo(
+        $_consoleStartupHandle);
+      # Force the screen buffer size to match the window size.
+      # The Console API guarantees this, but some implementations
+      # are not compliant (e.g. Wine).
+      my ($left, $top, $right, $bottom) = @sbInfo[5..8];
+      my $dwSize = {
+        X => $right - $left + 1, 
+        Y => $bottom - $top + 1,
+      };
+      Win32::Console::_SetConsoleScreenBufferSize($_consoleOutputHandle, 
+        $dwSize->{X}, $dwSize->{Y});
+    }
+    Win32::Console::_SetConsoleActiveScreenBuffer($_consoleOutputHandle);
+
+    if ( !$isValid->($_consoleInputHandle) 
+      || !$isValid->($_consoleStartupHandle) 
+      || !$isValid->($_consoleOutputHandle) 
+    ) {
+      confess("Error: cannot get a console.\n");
+    }
+
     eval {
+      q/*
       my $CONSOLE = Win32::Console->new(STD_INPUT_HANDLE);
       assert { $CONSOLE };
-      assert { $CONSOLE->is_valid };
+      assert { !!$CONSOLE->Mode() };
       $_startup_input_mode = $CONSOLE->Mode();
 
       $CONSOLE = Win32::Console->new(STD_OUTPUT_HANDLE);
       assert { $CONSOLE };
-      assert { $CONSOLE->is_valid };
+      assert { !!$CONSOLE->Mode() };
       $_startup_output_mode = $CONSOLE->Mode();
-
-      my $major = (Win32::GetOSVersion())[1] // 0;
-      my @info;
-      if ( $major < 6 ) {
-        my $hConsoleOutput = $CONSOLE->{'handle'};
-        assert { $hConsoleOutput };
-        assert { $hConsoleOutput != INVALID_HANDLE_VALUE };
-        @info =
-          Win32::Console::More::_GetConsoleScreenBufferInfoEx(
-            $hConsoleOutput) 
-              or confess(sprintf('Win32 API error: %s', $EXTENDED_OS_ERROR));
-        assert { scalar(@info) >= 29 };
-      } 
-      else {
-        # GetConsoleScreenBufferInfoEx is not supported
-        @info = Win32::Console::_GetConsoleScreenBufferInfo($CONSOLE->{'handle'});
-        assert { scalar(@info) };
-      } 
-      $_startup_info = \@info;
+      */ if 0;
 
       $_initialized = TRUE;
     } or do {
       warn("$1\n") if $@ =~ /(.+?)$/m 
     };
+  
     return;
   }
 
@@ -2824,43 +3535,91 @@ console.
 
 =cut
 
-  sub _done() :Private {
+  sub _done {
     assert { @_ == 0 };
 
     return unless $_initialized;
+
+    my @activeSbInfo = Win32::Console::_GetConsoleScreenBufferInfo(
+      $_consoleOutputHandle);
+    my @startupSbInfo = Win32::Console::_GetConsoleScreenBufferInfo(
+      $_consoleStartupHandle);
+
+    my ($left, $top, $right, $bottom) = @activeSbInfo[5..8];
+    my $activeWindowSize = { 
+      X => $right - $left + 1, 
+      Y => $bottom - $top + 1,
+    };
+    ($left, $top, $right, $bottom) = @startupSbInfo[5..8];
+    my $startupWindowSize = { 
+      X => $right - $left + 1, 
+      Y => $bottom - $top + 1,
+    };
+
+    # Preserve the current window size.
+    if ( $activeWindowSize->{X} != $startupWindowSize->{X} 
+      || $activeWindowSize->{Y} != $startupWindowSize->{Y} 
+    ) {
+      # The buffer is not allowed to be smaller than the window, so enlarge
+      # it if necessary. But do not shrink it in the opposite case, to avoid
+      # loss of data.
+      my $dwSize = {
+        X => $startupSbInfo[0],
+        Y => $startupSbInfo[1],
+      };
+      $dwSize->{X} = $activeWindowSize->{X}
+        if $dwSize->{X} < $activeWindowSize->{X};
+      $dwSize->{Y} = $activeWindowSize->{Y}
+        if $dwSize->{Y} < $activeWindowSize->{Y};
+      Win32::Console::_SetConsoleScreenBufferSize($_consoleStartupHandle, 
+        $dwSize->{X}, $dwSize->{Y});
+      # Get the updated cursor position, in case it changed after the resize.
+      @startupSbInfo = Win32::Console::_GetConsoleScreenBufferInfo(
+        $_consoleStartupHandle);
+      # Make sure the cursor is visible. If possible, show it in the bottom 
+      # row.
+      my $srWindow = {};
+      my $dwCursorPosition = {
+        X => $startupSbInfo[2],
+        Y => $startupSbInfo[3],
+      };
+      $srWindow->{Right} = max($dwCursorPosition->{X}, $activeWindowSize->{X} - 1);
+      $srWindow->{Left} = $srWindow->{Right} - ($activeWindowSize->{X} - 1);
+      $srWindow->{Bottom} = max($dwCursorPosition->{Y}, $activeWindowSize->{Y} - 1);
+      $srWindow->{Top} = $srWindow->{Bottom} - ($activeWindowSize->{Y} - 1);
+      Win32::Console::_SetConsoleWindowInfo($_consoleStartupHandle, TRUE,
+        $srWindow->{Left}, $srWindow->{Top}, 
+        $srWindow->{Right}, $srWindow->{Bottom});
+    }
+
+    Win32::Console::_SetConsoleActiveScreenBuffer($_consoleStartupHandle);
+    Win32::Console::_CloseHandle($_consoleInputHandle) 
+      if $_owningInputHandle;
+    Win32::Console::_CloseHandle($_consoleStartupHandle) 
+      if $_consoleStartupHandle;
+    Win32::Console::_CloseHandle($_consoleOutputHandle) 
+      if $_consoleOutputHandle;
+    Win32::Console::Free() 
+      if $_ownsConsole;
+
     eval {
+      q/*
       my $CONSOLE = Win32::Console->new(STD_INPUT_HANDLE);
       assert { $CONSOLE };
-      assert { $CONSOLE->is_valid };
+      assert { !!$CONSOLE->Mode() };
       $CONSOLE->Mode($_startup_input_mode);
 
       $CONSOLE = Win32::Console->new(STD_OUTPUT_HANDLE);
       assert { $CONSOLE };
-      assert { $CONSOLE->is_valid };
+      assert { !!$CONSOLE->Mode() };
       $CONSOLE->Mode($_startup_output_mode);
-
-      my @info = @{ $_startup_info };
-      assert { scalar(@info) };
-      my $major = (Win32::GetOSVersion())[1] // 0;
-      if ( $major >= 6 && scalar(@info) >= 29 ) {
-        my $hConsoleOutput = $CONSOLE->{'handle'};
-        assert { $hConsoleOutput };
-        assert { $hConsoleOutput != INVALID_HANDLE_VALUE };
-        # https://stackoverflow.com/a/52227764
-        $info[8] += 1;
-        $info[9] += 1;
-        Win32::Console::More::_SetConsoleScreenBufferInfoEx(
-          $hConsoleOutput, @info)
-            or confess(sprintf('Win32 API error: %s', $EXTENDED_OS_ERROR));
-      }
-      else {
-        # SetConsoleScreenBufferInfoEx is not supported
-      }
+      */ if 0;
 
       $_initialized = FALSE;
     } or do {
-      warn("$1\n") if $@ =~ /(.+?)$/m;
+      warn($@ =~ /(.+?)$/m ? "$1\n" : $@);
     };
+  
     return;
   }
 
@@ -2870,15 +3629,113 @@ console.
 
 =head2 Inheritance
 
-Methods inherited from class L<Moo::Object|Moo>
+Methods inherited from class L<Class::Tiny::Object|Moo>
 
-  new, does, DOES, meta, BUILDARGS, FOREIGNBUILDARGS, BUILD, DEMOLISH
+  new, DESTROY
+
+Methods inherited from class L<UNIVERSAL>
+
+  can, DOES, isa, VERSION
 
 =cut
 
 }
 
 1;
+
+# ------------------------------------------------------------------------
+# Injections -------------------------------------------------------------
+# ------------------------------------------------------------------------
+
+# see RT64675 https://rt.cpan.org/Public/Bug/Display.html?id=64675
+#----------------------------------------
+package Win32::Console::PatchForRT64675 {
+#----------------------------------------
+  use Win32::Console qw();
+  my $old_InputChar = Win32::Console->can('InputChar');
+  my $new_InputChar = sub {
+    my ($self, $number) = @_;
+    return undef unless ref($self);
+    $number = 1 unless defined($number);
+ 
+    my $buffer = (" " x $number);
+    $number = Win32::Console::_ReadConsole($self->{'handle'}, 
+      $buffer, $number);
+    return undef unless $number;
+    substr($buffer, $number) = '';
+    return $buffer;
+  };
+  no warnings qw( redefine );
+  *Win32::Console::InputChar = $new_InputChar;
+  1;
+}
+
+# see RT64676 https://rt.cpan.org/Public/Bug/Display.html?id=64676
+#----------------------------------------
+package Win32::Console::PatchForRT64676 {
+#----------------------------------------
+  use Win32::Console qw();
+  my $Close = sub {
+    my ($self) = @_;
+    return undef unless ref($self);
+    return Win32::Console::_CloseHandle($self->{'handle'});
+  };
+  no warnings qw( once redefine );
+  *Win32::Console::Close = $Close unless Win32::Console->can('Close');
+  1;
+}
+
+# Writing 0 bytes causes the cursor to become invisible for a short time in old
+# versions of the Windows console.
+#--------------------------------------
+package Win32::Console::PatchForWrite {
+#--------------------------------------
+  use Win32::Console qw();
+  my $old_Write = Win32::Console->can('Write');
+  my $new_Write = sub {
+    my ($self, $string) = @_;
+    return undef unless ref($self);
+    return undef unless length($string);
+    return Win32::Console::_WriteConsole($self->{'handle'}, $string);
+  };
+  no warnings qw( redefine );
+  *Win32::Console::Write = $new_Write;
+  1;
+}
+
+# see SYNOPSIS using this code
+#---------------
+package System {
+#---------------
+  use Exporter qw( import );
+  our @EXPORT = qw( Console );
+  sub Console() {
+    require Win32::Console::DotNet;
+    state $instance = Win32::Console::DotNet->instance();
+  }
+  $INC{'System.pm'} = 1;
+}
+
+# see Utilapiset.h and Winuser.h documentation for Beep() and GetKeyState()
+#--------------------
+package Win32Native {
+#--------------------
+  use English qw( -no_match_vars );
+  use Win32::API;
+  use constant {
+    KERNEL32  => 'kernel32',
+    USER32    => 'user32',
+  };
+  BEGIN {
+    Win32::API::More->Import(KERNEL32, 
+      'BOOL Beep(DWORD dwFreq, DWORD dwDuration)'
+    ) or die "Import Beep: $EXTENDED_OS_ERROR";
+    Win32::API::More->Import(USER32, 
+      'int GetKeyState(int nVirtKey)'
+    ) or die "Import GetKeyState: $EXTENDED_OS_ERROR";
+  }
+  $INC{'Win32Native.pm'} = 1;
+}
 
 __END__
 
@@ -2887,7 +3744,7 @@ __END__
  This class provides access to the standard input, standard output
  and standard error streams
 
- Copyright (c) Microsoft Corporation.
+ Copyright (c) 2015 by Microsoft Corporation.
 
  The library files are licensed under MIT licence.
 
@@ -2920,6 +3777,36 @@ __END__
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  DEALINGS IN THE SOFTWARE.
+
+=head1 CONTRIBUTORS
+
+=over
+
+=item *
+
+1998-2008 by Andy Wardley E<lt>abw@wardley.orgE<gt> (Code snippet from 
+L<Class:Singleton>)
+
+=item *
+
+2014, 2020 by Steve Hay (Code snippet from 
+L<Class:Singleton>)
+
+=item *
+
+2008, 2009 by Piotr Roszatycki E<lt>dexter@cpan.orgE<gt> (Code snippet from 
+L<constant:boolean>)
+
+=item *
+
+2011 by Joe Vornehm E<lt>joejr@vornehm.comE<gt> (Code snippet from I<RT64675>)
+
+=item *
+
+2019-2021 by magiblot E<lt>magiblot@hotmail.comE<gt> (Code snippet from 
+I<stdioctl.cpp>)
+
+=back
 
 =head1 SEE ALSO
 

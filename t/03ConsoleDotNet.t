@@ -4,6 +4,7 @@ use warnings;
 use Test::More;
 use Test::Exception;
 use Devel::StrictMode;
+use POSIX;
 
 BEGIN {
   unless ( $^O eq 'MSWin32' ) {
@@ -16,18 +17,20 @@ BEGIN {
 
 BEGIN {
   use_ok 'Win32::Console';
-  use_ok 'Win32::Console::More';
   use_ok 'Win32::Console::DotNet';
 }
+
+# Fix STDOUT redirection from prove
+POSIX::dup2(fileno(STDERR), fileno(STDOUT));
 
 #-------------------
 note 'Constructors';
 #-------------------
 
-my $console = System::Console->instance();
+use_ok 'System';
 isa_ok(
-  $console,
-  System::Console->FACTORY
+  Console(),
+  System::Console->FACTORY,
 );
 
 #----------------
@@ -35,145 +38,145 @@ note 'Properties';
 #----------------
 
 is(
-  $console->BackgroundColor,
+  System::Console->BackgroundColor,
   $BG_BLACK,
   'Console->BackgroundColor'
 );
 
 cmp_ok(
-  $console->BufferHeight, '>', '0',
+  System::Console->BufferHeight, '>', '0',
   'Console->BufferHeight'
 );
 
 cmp_ok(
-  $console->BufferWidth, '>', '0',
+  System::Console->BufferWidth, '>', '0',
   'Console->BufferWidth'
 );
 
 lives_ok(
-  sub { $console->CapsLock },
+  sub { System::Console->CapsLock },
   'Console->CapsLock'
 );
 
 cmp_ok(
-  $console->CursorLeft, '>=', '0',
+  System::Console->CursorLeft, '>=', '0',
   'Console->CursorLeft'
 );
 
 ok(
-  ($console->CursorSize >= 0 && $console->CursorSize <= 100),
+  (System::Console->CursorSize >= 0 && System::Console->CursorSize <= 100),
   'Console->CursorSize'
 );
 
 cmp_ok(
-  $console->CursorTop, '>=', '0',
+  System::Console->CursorTop, '>=', '0',
   'Console->CursorTop'
 );
 
 lives_ok(
-  sub { $console->CursorVisible(1) },
+  sub { System::Console->CursorVisible(1) },
   'Console->CursorVisible'
 );
 
 ok(
-  defined($console->Error),
+  defined(System::Console->Error),
   'Console->Error'
 );
 
 is(
-  $console->ForegroundColor,
+  System::Console->ForegroundColor,
   $FG_LIGHTGRAY,
   'Console->ForegroundColor'
 );
 
 ok(
-  defined($console->In),
+  defined(System::Console->In),
   'Console->In'
 );
 
 cmp_ok(
-  $console->InputEncoding, '>', '0',
+  System::Console->InputEncoding, '>', '0',
   'Console->InputEncoding'
 );
 
 lives_ok(
-  sub { $console->IsErrorRedirected },
+  sub { System::Console->IsErrorRedirected },
   'Console->IsErrorRedirected'
 );
 
 lives_ok(
-  sub { $console->IsInputRedirected },
+  sub { System::Console->IsInputRedirected },
   'Console->IsInputRedirected'
 );
 
 lives_ok(
-  sub { $console->IsOutputRedirected },
+  sub { System::Console->IsOutputRedirected },
   'Console->IsOutputRedirected'
 );
 
 lives_ok(
-  sub { $console->KeyAvailable },
+  sub { System::Console->KeyAvailable },
   'Console->KeyAvailable'
 );
 
 cmp_ok(
-  $console->LargestWindowHeight, '>', '0',
+  System::Console->LargestWindowHeight, '>', '0',
   'Console->LargestWindowHeight'
 );
 
 cmp_ok(
-  $console->LargestWindowWidth, '>', '0',
+  System::Console->LargestWindowWidth, '>', '0',
   'Console->LargestWindowWidth'
 );
 
 lives_ok(
-  sub { $console->NumberLock },
+  sub { System::Console->NumberLock },
   'Console->NumberLock'
 );
 
 ok(
-  defined($console->Out),
+  defined(System::Console->Out),
   'Console->Out'
 );
 
 cmp_ok(
-  $console->OutputEncoding, '>', '0',
+  System::Console->OutputEncoding, '>', '0',
   'Console->OutputEncoding'
 );
 
 lives_ok(
-  sub { $console->Title('Test::More') },
+  sub { System::Console->Title('Test::More') },
   'Console->Title'
 );
 
 lives_ok(
-  sub { $console->TreatControlCAsInput(0) },
+  sub { System::Console->TreatControlCAsInput(0) },
   'Console->TreatControlCAsInput'
 );
 
 subtest 'WindowHeight' => sub {
   plan tests => 3;
-  my $height = $console->BufferHeight - 1;
-  lives_ok { $height = $console->BufferHeight - 1 } 'Console->BufferHeight';
-  lives_ok { $console->WindowHeight($height) } 'Console->WindowHeight';
-  is $console->WindowHeight(), $height, '$height';
+  my $height = System::Console->BufferHeight - 1;
+  lives_ok { $height = System::Console->BufferHeight - 1 } 'Console->BufferHeight';
+  lives_ok { System::Console->WindowHeight($height) } 'Console->WindowHeight';
+  is System::Console->WindowHeight(), $height, '$height';
 };
 
 cmp_ok(
-  $console->WindowLeft, '>=', '0',
+  System::Console->WindowLeft, '>=', '0',
   'Console->WindowLeft'
 );
 
 subtest 'WindowWidth' => sub {
   plan tests => 3;
-  my $width = $console->BufferWidth - 1;
-  lives_ok { $width = $console->BufferWidth - 1 } 'Console->BufferWidth';
-  lives_ok { $console->WindowWidth($width) } 'Console->WindowWidth';
-  is $console->WindowWidth(), $width, '$width';
+  my $width = System::Console->BufferWidth - 1;
+  lives_ok { $width = System::Console->BufferWidth - 1 } 'Console->BufferWidth';
+  lives_ok { System::Console->WindowWidth($width) } 'Console->WindowWidth';
+  is System::Console->WindowWidth(), $width, '$width';
 };
 
 cmp_ok(
-  $console->WindowTop, '>=', '0',
+  System::Console->WindowTop, '>=', '0',
   'Console->WindowTop'
 );
 
@@ -182,67 +185,68 @@ note 'System::Console';
 #----------------------
 
 lives_ok(
-  sub { $console->Clear() },
+  sub { System::Console->Clear() },
   'Console->Clear'
 );
 
 subtest 'ResetColor' => sub {
   plan tests => 5;
-  lives_ok { $console->ForegroundColor($FG_YELLOW) } 'Console->ForegroundColor(14)';
-  lives_ok { $console->BackgroundColor($BG_BLUE >> 4) } 'Console->BackgroundColor(1)';
-  lives_ok { $console->ResetColor() } 'Console->ResetColor';
-  is $console->ForegroundColor, $FG_LIGHTGRAY, 'Console->ForegroundColor';
-  is $console->BackgroundColor, ($BG_BLACK >> 4), 'Console->BackgroundColor';
+  lives_ok { System::Console->ForegroundColor($FG_YELLOW) } 'Console->ForegroundColor(14)';
+  lives_ok { System::Console->BackgroundColor($BG_BLUE >> 4) } 'Console->BackgroundColor(1)';
+  lives_ok { System::Console->ResetColor() } 'Console->ResetColor';
+  is System::Console->ForegroundColor, $FG_LIGHTGRAY, 'Console->ForegroundColor';
+  is System::Console->BackgroundColor, ($BG_BLACK >> 4), 'Console->BackgroundColor';
 };
 
 subtest 'SetBufferSize' => sub {
   plan tests => 3;
-  my $height = $console->BufferHeight;
-  my $width = $console->BufferWidth;
-  lives_ok { $console->SetBufferSize($width, $height) } 'Console->SetBufferSize';
-  is $console->BufferHeight, $height, 'Console->BufferHeight';
-  is $console->BufferWidth, $width, 'Console->BufferWidth';
+  my $height = System::Console->BufferHeight;
+  my $width = System::Console->BufferWidth;
+  lives_ok { System::Console->SetBufferSize($width, $height) } 'Console->SetBufferSize';
+  is System::Console->BufferHeight, $height, 'Console->BufferHeight';
+  is System::Console->BufferWidth, $width, 'Console->BufferWidth';
 };
 
 subtest 'SetCursorPosition' => sub {
   plan tests => 3;
-  my $x = $console->CursorLeft;
-  my $y = $console->CursorTop;
-  lives_ok { $console->SetCursorPosition($x, $y) } 'Console->SetCursorPosition';
-  cmp_ok $console->CursorLeft, '>=', $x, 'Console->CursorLeft';
-  cmp_ok $console->CursorTop, '>=', $y, 'Console->CursorTop';
+  my $x = System::Console->CursorLeft;
+  my $y = System::Console->CursorTop;
+  lives_ok { System::Console->SetCursorPosition($x, $y) } 'Console->SetCursorPosition';
+  cmp_ok System::Console->CursorLeft, '>=', $x, 'Console->CursorLeft';
+  cmp_ok System::Console->CursorTop, '>=', $y, 'Console->CursorTop';
 };
 
 subtest 'GetCursorPosition' => sub {
   plan tests => 3;
   my ($x, $y);
-  lives_ok { ($x, $y) = @{ $console->GetCursorPosition() } } 'Console->GetCursorPosition';
+  lives_ok { ($x, $y) = @{ System::Console->GetCursorPosition() } } 'Console->GetCursorPosition';
   ok defined($x), 'Console->CursorLeft';
   ok defined($y), 'Console->CursorTop';
 };
 
+isa_ok(
+  System::Console->OpenStandardError(),
+  'Win32::Console',
+);
+
+isa_ok(
+  System::Console->OpenStandardInput(),
+  'Win32::Console',
+);
+
+isa_ok(
+  System::Console->OpenStandardOutput(),
+  'Win32::Console',
+);
+
 lives_ok(
-  sub { $console->Beep() },
+  sub { System::Console->Beep() },
   'Console->Beep'
 );
 
 lives_ok(
-  sub { my $key = $console->Read() if STRICT },
+  sub { my $key = System::Console->Read() if STRICT },
   'Console->Read'
 );
-
-SKIP: {
-  skip 'private method tests', 2 unless STRICT;
-
-  dies_ok { $console->_init };
-  dies_ok { $console->_done };
-
-  lives_ok(
-    sub {
-      $console->_clear_instance();
-    },
-    'Console->_clear_instance'
-  );
-}
 
 done_testing;

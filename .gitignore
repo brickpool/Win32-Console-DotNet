@@ -1,7 +1,7 @@
 !Build/
 .last_cover_stats
-/META.yml
-/META.json
+#/META.yml
+#/META.json
 /MYMETA.*
 *.o
 *.pm.tdy
@@ -43,7 +43,7 @@ inc/
 /lib/_*
 /src/
 /t/_*
-/xt/
+/xt/_*
 
 # Komodo IDE
 *.komodoproject

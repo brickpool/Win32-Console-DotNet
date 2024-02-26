@@ -1,18 +1,17 @@
 Changes
 lib/Win32/Console/DotNet.pm
-lib/Win32/Console/DotNet/Types.pm
-lib/Win32/Console/More.pm
-lib/Win32/Native.pm
 LICENSE
 Makefile.PL
 MANIFEST			This list of files
+META.json
+META.yml
 README
 samples/Beep.pl
 samples/Read.pl
 samples/ReadLine.pl
 samples/Write.pl
-t/01pod.t
 t/02Win32LowLevel.t
 t/03ConsoleDotNet.t
-xt/test_private.t
-xt/test_types.t
+xt/01pod.t
+xt/02kwalitee.t
+xt/03private.t

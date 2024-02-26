@@ -2,12 +2,14 @@ Makefile.old
 MANIFEST.bak
 Build
 Build.bat
-META.*
+MYMETA.*
 .build/
 _build/
 cover_db/
 blib/
+doc/
 inc/
+src/
 .lwpcookies
 .last_cover_stats
 nytprof.out
