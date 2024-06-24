@@ -3207,7 +3207,9 @@ Simplifies the use of GetConsoleScreenBufferInfo().
 
       if ( !$success ) {
         my $errorCode = Win32::GetLastError();
-        if ( $errorCode == Win32Native::ERROR_INVALID_HANDLE && !$throwOnNoConsole) {
+        if ( $errorCode == Win32Native::ERROR_INVALID_HANDLE
+          && !$throwOnNoConsole
+        ) {
           return { %$CONSOLE_SCREEN_BUFFER_INFO };
         }
         confess("WinIOError: $EXTENDED_OS_ERROR");
@@ -3629,7 +3631,7 @@ console.
 
 =head2 Inheritance
 
-Methods inherited from class L<Class::Tiny::Object|Moo>
+Methods inherited from class L<Class::Tiny::Object|Class::Tiny>
 
   new, DESTROY
 
