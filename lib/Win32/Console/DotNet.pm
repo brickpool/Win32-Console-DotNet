@@ -3230,8 +3230,8 @@ Simplifies the use of GetConsoleScreenBufferInfo().
         Y => $csbi[1],
       },
       dwCursorPosition => {
-        X => $csbi[1],
-        Y => $csbi[2],
+        X => $csbi[2],
+        Y => $csbi[3],
       },
       wAttributes => $csbi[4],
       srWindow => {

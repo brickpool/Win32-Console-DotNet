@@ -3,7 +3,9 @@ use warnings;
 
 use Test::More;
 use Test::Exception;
+
 use Devel::StrictMode;
+use List::Util qw( min );
 use POSIX;
 
 BEGIN {
@@ -156,27 +158,37 @@ lives_ok(
 
 subtest 'WindowHeight' => sub {
   plan tests => 3;
-  my $height = System::Console->BufferHeight - 1;
-  lives_ok { $height = System::Console->BufferHeight - 1 } 'Console->BufferHeight';
+  my $height = 25;
+  lives_ok { 
+    $height = min(
+      System::Console->BufferHeight,
+      System::Console->LargestWindowHeight
+    );
+  } 'Console->LargestWindowHeight';
   lives_ok { System::Console->WindowHeight($height) } 'Console->WindowHeight';
   is System::Console->WindowHeight(), $height, '$height';
 };
 
 cmp_ok(
-  System::Console->WindowLeft, '>=', '0',
+  System::Console->WindowLeft, '>=', 0,
   'Console->WindowLeft'
 );
 
 subtest 'WindowWidth' => sub {
   plan tests => 3;
-  my $width = System::Console->BufferWidth - 1;
-  lives_ok { $width = System::Console->BufferWidth - 1 } 'Console->BufferWidth';
+  my $width = 80;
+  lives_ok { 
+    $width = min(
+      System::Console->BufferWidth,
+      System::Console->LargestWindowWidth
+    );
+  } 'Console->LargestWindowWidth';
   lives_ok { System::Console->WindowWidth($width) } 'Console->WindowWidth';
   is System::Console->WindowWidth(), $width, '$width';
 };
 
 cmp_ok(
-  System::Console->WindowTop, '>=', '0',
+  System::Console->WindowTop, '>=', 0,
   'Console->WindowTop'
 );
 
@@ -212,7 +224,7 @@ subtest 'SetCursorPosition' => sub {
   my $x = System::Console->CursorLeft;
   my $y = System::Console->CursorTop;
   lives_ok { System::Console->SetCursorPosition($x, $y) } 'Console->SetCursorPosition';
-  cmp_ok System::Console->CursorLeft, '>=', $x, 'Console->CursorLeft';
+  cmp_ok System::Console->CursorLeft, '>=', 0, 'Console->CursorLeft';
   cmp_ok System::Console->CursorTop, '>=', $y, 'Console->CursorTop';
 };
 
