@@ -19,23 +19,23 @@ WriteMakefile(
   },
 
   PREREQ_PM => {
-    'Class::Method::Modifiers'  => '2.11',
-    'Class::Tiny'               => '1.000',
-    'Class::Tiny::Antlers'      => '0.024',
-    'Devel::StrictMode'         => '0.003',
-    'IO::Null'                  => '1.01',
-    'namespace::sweep'          => '0.006',
-    'PerlX::Assert'             => '0.905',
-    'Type::Nano'                => '0.014',
-    'Win32'                     => '0.54',
-    'Win32::API'                => '0.79',
-    'Win32::Console'            => '0.10',
-    'Win32API::File'            => '0.1201',
+    'Class::Method::Modifiers'  => 2.11,
+    'Class::Tiny'               => 1.000,
+    'Class::Tiny::Antlers'      => 0.024,
+    'Devel::StrictMode'         => 0.003,
+    'IO::Null'                  => 1.01,
+    'namespace::sweep'          => 0.006,
+    'PerlX::Assert'             => 0.905,
+    'Type::Nano'                => 0.014,
+    'Win32'                     => 0.54,
+    'Win32::API'                => 0.79,
+    'Win32::Console'            => 0.10,
+    'Win32API::File'            => 0.1201,
   },
 
   TEST_REQUIRES => {
-    'Test::Exception' => '0.43',
-    'Test::More'      => '1.001006',
+    'Test::Exception' => 0.43,
+    'Test::Simple'    => 1.302188,
   },
 
   META_MERGE  => {
