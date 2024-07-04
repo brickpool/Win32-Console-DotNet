@@ -1,10 +1,19 @@
 Revision history for Win32::Console::DotNet
 
-0.002   2024-02-26
+0.3     2024-07-03
+        - Extension for the use of threads
+        - Use of IO::Handle
+        - Add RessourceStrings for exceptions
+
+0.2.1   2024-06-25
+        - Correction of GetBufferInfo()
+        - Correction of some test cases
+
+0.2     2024-02-26
         - Change from Moo to Class::Tiny::Antlers
         - Change from namespace::autoclean to namespace::sweep
         - Use of Type::Nano
         - Remove some dependencies
 
-0.001   2024-02-18
+0.1     2024-02-18
         - First release.

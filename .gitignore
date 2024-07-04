@@ -52,3 +52,6 @@ inc/
 # VS Code
 /.vscode/
 *.code-workspace
+
+# Devel
+/trial/

@@ -5,13 +5,16 @@ Makefile.PL
 MANIFEST			This list of files
 META.json
 META.yml
-README
+README.pod
 samples/Beep.pl
 samples/Read.pl
 samples/ReadLine.pl
 samples/Write.pl
+t/00Load.t
+t/01DebugOutput.t
 t/02Win32LowLevel.t
 t/03ConsoleDotNet.t
+t/04ConsoleStream.t
 xt/01pod.t
 xt/02kwalitee.t
 xt/03private.t

@@ -1,5 +1,7 @@
+\bMakefile$
 Makefile.old
 MANIFEST.bak
+MANIFEST.SKIP
 Build
 Build.bat
 MYMETA.*
@@ -10,6 +12,7 @@ blib/
 doc/
 inc/
 src/
+trial/
 .lwpcookies
 .last_cover_stats
 nytprof.out

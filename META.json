@@ -27,30 +27,47 @@
       },
       "configure" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : "0"
+            "ExtUtils::MakeMaker" : "6.64"
          }
       },
       "runtime" : {
+         "recommends" : {
+            "DateTime" : "0",
+            "Time::HiRes" : "0",
+            "Type::Tiny" : "0"
+         },
          "requires" : {
             "Class::Method::Modifiers" : "2.11",
             "Class::Tiny" : "1.000",
             "Class::Tiny::Antlers" : "0.024",
             "Devel::StrictMode" : "0.003",
-            "English" : "1.06_01",
-            "List::Util" : "0.204",
+            "English" : "0",
+            "Exporter" : "0",
+            "IO::File" : "0",
+            "IO::Handle" : "0",
+            "IO::Null" : "1.01",
+            "List::Util" : "0",
             "PerlX::Assert" : "0.905",
+            "Symbol" : "0",
             "Type::Nano" : "0.014",
             "Win32" : "0.54",
             "Win32::API" : "0.79",
             "Win32::Console" : "0.10",
             "Win32API::File" : "0.1201",
-            "constant" : "1.27",
+            "constant" : "0",
             "namespace::sweep" : "0.006",
-            "perl" : "5.014"
+            "perl" : "5.014",
+            "strict" : "0",
+            "threads" : "0",
+            "threads::shared" : "0",
+            "warnings" : "0"
          }
       },
       "test" : {
          "requires" : {
+            "FindBin" : "0",
+            "POSIX" : "0",
+            "Scalar::Util" : "0",
             "Test::Exception" : "0.43",
             "Test::More" : "1.001006"
          }
@@ -59,15 +76,15 @@
    "release_status" : "testing",
    "resources" : {
       "bugtracker" : {
-         "web" : "https://github.com/brickpool/Console/issues"
+         "web" : "https://github.com/brickpool/Win32-Console-DotNet/issues"
       },
-      "homepage" : "http://brickpool.de",
       "repository" : {
          "type" : "git",
-         "url" : "https://github.com/brickpool/Console.git",
-         "web" : "https://github.com/brickpool/Console"
+         "url" : "https://github.com/brickpool/Win32-Console-DotNet.git",
+         "web" : "https://github.com/brickpool/Win32-Console-DotNet"
       }
    },
-   "version" : "0.002_000",
+   "version" : "0.003_000",
+   "x_homepage" : "http://brickpool.de",
    "x_serialization_backend" : "JSON::PP version 4.05"
 }

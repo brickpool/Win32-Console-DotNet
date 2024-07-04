@@ -1,41 +1,29 @@
-use 5.006;
 use strict;
 use warnings;
-use ExtUtils::MakeMaker;
+use ExtUtils::MakeMaker 6.64;
 
 die "OS unsupported\n" if $^O ne 'MSWin32';
 
 WriteMakefile(
-  MIN_PERL_VERSION  => '5.014',
-  PL_FILES          => {},
-  LICENSE           => 'mit',
-  META_MERGE  => {
-    'meta-spec' => { version => 2 },
-    resources   => {
-      bugtracker  => {
-        web => 'https://github.com/brickpool/Console/issues',
-      },
-      repository  => {
-        type => 'git',
-        url  => 'https://github.com/brickpool/Console.git',
-        web  => 'https://github.com/brickpool/Console',
-      },
-      homepage    => 'http://brickpool.de',
-    },
-  },
-  AUTHOR            => 'J. Schneider',
   NAME              => 'Win32::Console::DotNet',
   VERSION_FROM      => 'lib/Win32/Console/DotNet.pm',
   ABSTRACT_FROM     => 'lib/Win32/Console/DotNet.pm',
+  MIN_PERL_VERSION  => '5.014',
+  AUTHOR            => 'J. Schneider',
+  LICENSE           => 'mit',
   EXE_FILES         => [],
+  PL_FILES          => {},
+
+  CONFIGURE_REQUIRES => {
+    'ExtUtils::MakeMaker' => 6.64,
+  },
+
   PREREQ_PM => {
     'Class::Method::Modifiers'  => '2.11',
     'Class::Tiny'               => '1.000',
     'Class::Tiny::Antlers'      => '0.024',
-    'constant'                  => '1.27',
     'Devel::StrictMode'         => '0.003',
-    'English'                   => '1.06_01',
-    'List::Util'                => '0.204',
+    'IO::Null'                  => '1.01',
     'namespace::sweep'          => '0.006',
     'PerlX::Assert'             => '0.905',
     'Type::Nano'                => '0.014',
@@ -44,14 +32,62 @@ WriteMakefile(
     'Win32::Console'            => '0.10',
     'Win32API::File'            => '0.1201',
   },
+
   TEST_REQUIRES => {
     'Test::Exception' => '0.43',
     'Test::More'      => '1.001006',
   },
+
+  META_MERGE  => {
+    'meta-spec' => { 
+      version => 2 
+    },
+    homepage    => 'http://brickpool.de',
+    resources   => {
+      repository  => {
+        type => 'git',
+        url  => 'https://github.com/brickpool/Win32-Console-DotNet.git',
+        web  => 'https://github.com/brickpool/Win32-Console-DotNet',
+      },
+      bugtracker  => {
+        web => 'https://github.com/brickpool/Win32-Console-DotNet/issues',
+      },
+    },
+    prereqs => {
+      runtime => {
+        requires => { # v5.14 builtin modules
+          'constant'        => 0,
+          'English'         => 0,
+          'Exporter'        => 0,
+          'IO::File'        => 0,
+          'IO::Handle'      => 0,
+          'List::Util'      => 0,
+          'strict'          => 0,
+          'Symbol'          => 0,
+          'threads'         => 0,
+          'threads::shared' => 0,
+          'warnings'        => 0,
+        },
+        recommends => {
+          'DateTime'        => 0,
+          'Time::HiRes'     => 0,
+          'Type::Tiny'      => 0,
+        },
+      },
+      test => {
+        requires => { # v5.14 builtin modules
+          'FindBin'         => 0,
+          'POSIX'           => 0,
+          'Scalar::Util'    => 0,
+        },
+      },
+    },
+  },
+
   dist  => {
-    COMPRESS  => 'gzip',
-    SUFFIX    => 'gz',
-    TARFLAGS  => '--format=gnu -cvf',
+    TARFLAGS => '-cvzf',
+    COMPRESS => 'perl -MExtUtils::Command -e test_f',
+    POSTOP   => 'perl -MExtUtils::Command -e mv $(DISTVNAME).tar $(DISTVNAME).tar$(SUFFIX)'
   },
   clean => {
     FILES => 'Win32-Console-*',

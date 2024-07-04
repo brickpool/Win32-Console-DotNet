@@ -2,9 +2,10 @@
 # This example demonstrates the System::Console->Write() method.
 
 use 5.014;
+use warnings;
 use Win32::Console::DotNet;
 
-sub main() {
+sub main {
   my $console = System::Console->instance();
 
   $console->Clear();

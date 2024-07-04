@@ -9,11 +9,12 @@ BEGIN {
     plan skip_all => 'This is not MSWin32';
   }
   else {
-    plan tests => 7;
+    plan tests => 9;
   }
 }
 
 BEGIN {
+  use_ok 'Win32API::File';
   use_ok 'Win32::Console::DotNet';
   use_ok 'Win32Native';
 };
@@ -43,6 +44,14 @@ lives_ok(
     Win32Native::Beep(800, 200);
   },
   'Beep(800, 200)'
+);
+
+lives_ok(
+  sub {
+    my $h = Win32API::File::FdGetOsFHandle(fileno(\*STDERR)) // -1;
+    Win32Native::WriteFile($h, 'A', 0, local $_, undef) || die;
+  },
+  'WriteFile'
 );
 
 lives_ok(

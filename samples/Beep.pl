@@ -66,6 +66,7 @@ sub play {
 sub main() {
   # Play the song
   play($mary);
+  return 0;
 }
 
 exit main();

@@ -15,6 +15,7 @@ sub main() {
   $console->Out->Write(sprintf("\nToday is %s at %s.", $dat->dmy('/'), $dat->hms));
   $console->Out->Write("\nPress Enter key to continue... ");
   $console->ReadLine();
+  return 0;
 }
 
 exit main();

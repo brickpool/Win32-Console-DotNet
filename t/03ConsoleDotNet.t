@@ -7,13 +7,14 @@ use Test::Exception;
 use Devel::StrictMode;
 use List::Util qw( min );
 use POSIX;
+use Scalar::Util qw( openhandle );
 
 BEGIN {
   unless ( $^O eq 'MSWin32' ) {
     plan skip_all => 'This is not MSWin32';
   }
   else {
-    plan tests => 41;
+    plan tests => 40;
   }
 }
 
@@ -236,20 +237,37 @@ subtest 'GetCursorPosition' => sub {
   ok defined($y), 'Console->CursorTop';
 };
 
-isa_ok(
-  System::Console->OpenStandardError(),
-  'Win32::Console',
-);
+subtest 'OpenStandardHandle' => sub {
+  plan tests => 3;
+  ok(
+    openhandle(System::Console->OpenStandardError()),
+    'OpenStandardError',
+  );
+  ok(
+    openhandle(System::Console->OpenStandardInput()),
+    'OpenStandardInput',
+  );
+  ok(
+    openhandle(System::Console->OpenStandardOutput()),
+    'OpenStandardOutput',
+  );
+};
 
-isa_ok(
-  System::Console->OpenStandardInput(),
-  'Win32::Console',
-);
-
-isa_ok(
-  System::Console->OpenStandardOutput(),
-  'Win32::Console',
-);
+subtest 'SetStandardHandle' => sub {
+  plan tests => 3;
+  lives_ok(
+    sub { System::Console->SetError(\*STDERR) },
+    'Console->SetError'
+  );
+  lives_ok(
+    sub { System::Console->SetIn(\*STDIN) },
+    'Console->SetIn'
+  );
+  lives_ok(
+    sub { System::Console->SetOut(\*STDERR) },
+    'Console->SetOut'
+  );
+};
 
 lives_ok(
   sub { System::Console->Beep() },

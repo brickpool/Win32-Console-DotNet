@@ -38,6 +38,7 @@ sub main() {
 
   }
   while ( $ch ne '+' );
+  return 0;
 }
 
 exit main();
