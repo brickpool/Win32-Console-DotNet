@@ -31,7 +31,7 @@ use namespace::sweep;
 
 # version '...'
 our $version = 'v4.6.0';
-our $VERSION = '0.003_000';
+our $VERSION = '0.003_001';
 $VERSION = eval $VERSION;
 
 # authority '...'
@@ -279,15 +279,15 @@ I<throw> IllegalArgumentException if the check fails
     return $_[0];
   }
 
-=item I<is_Int>
+=item I<assert_Int>
 
-  sub is_Int($value) : Bool
+  sub assert_Int($value) : Int
 
 Check for on integer; strict constaint.
 
 I<param> $value to be checked
 
-I<return> true if operand is an integer
+I<return> $value if the value is an integer
 
 I<throw> IllegalArgumentException if the check fails
 
@@ -1273,7 +1273,7 @@ A IO::Handle that represents the standard input stream.
           $reader = IO::Null->new();
         } else {
           my $enc = $_inputEncoding // Win32::GetConsoleCP();
-          $reader = IO::Handle->new_from_fd(fileno($s), 'r');
+          $reader = IO::File->new_from_fd(fileno($s), 'r');
           $reader->binmode(':encoding(UTF-8)') if $enc == 65001;
         }
         $self->$orig($_in = $reader);
@@ -1284,7 +1284,7 @@ A IO::Handle that represents the standard input stream.
 
 =item I<InputEncoding>
 
-  field InputEncoding ( is => rw, type => Int ) = GetConsoleCP();
+  field InputEncoding ( is => rw, type => Int );
 
 Gets or sets the encoding the console uses to write input.
 
@@ -1622,7 +1622,7 @@ A IO::Handle that represents the standard output stream.
 
 =item I<OutputEncoding>
 
-  field OutputEncoding ( is => rw, type => Int ) = GetConsoleOutputCP();
+  field OutputEncoding ( is => rw, type => Int );
 
 Gets or sets the encoding the console uses to write output.
 
@@ -2077,10 +2077,8 @@ than 32767 hertz or $duration is less than or equal to zero.
   sub Beep {
     assert { @_ == 1 || @_ == 3 };
     my $self = assert_Object shift;
-    my $frequency = 800;
-    my $duration = 200;
-    $frequency = assert_Int shift if @_ == 3;
-    $duration = assert_Int shift if @_ == 3;
+    my $frequency = @_ > 1 ? assert_Int(shift) : 800;
+    my $duration =  @_ > 0 ? assert_Int(shift) : 200;
 
     if ( $frequency < MinBeepFrequency || $frequency > MaxBeepFrequency ) {
       confess("ArgumentOutOfRangeException: frequency $frequency\n". 
@@ -2416,8 +2414,8 @@ $sourceHeight is zero.
 
 =item I<OpenStandardError>
 
-  method OpenStandardError(Int $bufferSize=DefaultConsoleBufferSize) 
-    : FileHandle
+  method OpenStandardError() : FileHandle
+  method OpenStandardError(Int $bufferSize) : FileHandle
 
 Acquires the standard error object.
 
@@ -2426,7 +2424,7 @@ I<return> the standard error object.
 =cut
 
   sub OpenStandardError {
-    assert { @_ == 1 || @_ == 2 };
+    assert { @_ >= 1 && @_ <= 2 };
     my $caller = shift;
     my $bufferSize = @_ ? assert_Int(shift) : DefaultConsoleBufferSize;
 
@@ -2442,8 +2440,8 @@ I<return> the standard error object.
 
 =item I<OpenStandardInput>
 
-  method OpenStandardInput(Int $bufferSizeDefaultConsoleBufferSize) 
-    : FileHandle
+  method OpenStandardInput() : FileHandle
+  method OpenStandardInput(Int $bufferSize) : FileHandle
 
 Acquires the standard input object.
 
@@ -2452,7 +2450,7 @@ I<return> the standard input object.
 =cut
 
   sub OpenStandardInput {
-    assert { @_ == 1 || @_ == 2 };
+    assert { @_ >= 1 && @_ <= 2 };
     my $caller = shift;
     my $bufferSize = @_ ? assert_Int(shift) : DefaultConsoleBufferSize;
 
@@ -2468,8 +2466,8 @@ I<return> the standard input object.
 
 =item I<OpenStandardOutput>
 
-  method OpenStandardOutput(Int $bufferSize=DefaultConsoleBufferSize) 
-    : FileHandle
+  method OpenStandardOutput() : FileHandle
+  method OpenStandardOutput(Int $bufferSize) : FileHandle
 
 Acquires the standard output object.
 
@@ -2478,7 +2476,7 @@ I<return> the standard output object.
 =cut
 
   sub OpenStandardOutput {
-    assert { @_ == 1 || @_ == 2 };
+    assert { @_ >= 1 && @_ <= 2 };
     my $caller = shift;
     my $bufferSize = @_ ? assert_Int(shift) : DefaultConsoleBufferSize;
 
@@ -2518,7 +2516,8 @@ I<throws> IOException if an I/O error occurred.
 
 =item I<ReadKey>
 
-  method ReadKey(Bool $intercept=FALSE) : HashRef
+  method ReadKey() : HashRef
+  method ReadKey(Bool $intercept) : HashRef
 
 Obtains the next character or function key pressed by the user. 
 The pressed key is optionally displayed in the console window.
@@ -2534,7 +2533,7 @@ modifier keys was pressed simultaneously with the console key.
 =cut
 
   sub ReadKey {
-    assert { @_ == 1 || @_ == 2 };
+    assert { @_ >= 1 && @_ <= 2 };
     my $self = assert_Object shift;
     my $intercept = @_ ? assert_Bool(shift) : FALSE;
 
@@ -2629,13 +2628,13 @@ modifier keys was pressed simultaneously with the console key.
     my $control = ($state & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) != 0;
 
     my $info = {
-      keyChar   => chr($ir[uChar]),
-      key       => $ir[virtualKeyCode],
-      modifiers => ($shift ? 2 : 0) + ($alt ? 1 : 0) + ($control ? 4 : 0),
+      KeyChar   => chr($ir[uChar]),
+      Key       => $ir[virtualKeyCode],
+      Modifiers => ($shift ? 2 : 0) + ($alt ? 1 : 0) + ($control ? 4 : 0),
     };
 
-    if ( $intercept ) {
-      $self->write($ir[uChar]);
+    if ( !$intercept ) {
+      $self->Write(chr($ir[uChar]));
     }
     return $info;
   }
@@ -2661,6 +2660,7 @@ I<throws> IOException if an I/O error occurred.
     $! = undef;
     my $str = $self->In->getline() // '';
     confess("IOException:\n$OS_ERROR\n") if $!;
+    chomp $str;
     return $str;
   }
 
@@ -3111,7 +3111,12 @@ I<throws> IOException if an I/O error occurred.
     assert { $self->Out };
     $! = undef;
     if ( @_ > 1 ) {
-      $self->Out->printf(shift, @_);
+      my $format = shift;
+      if ( !defined $format ) {
+        confess("ArgumentNullException:\n". 
+          sprintf("$ResourceString{ArgumentNullException}\n", "format"));
+      }
+      $self->Out->printf($format, @_);
     } elsif ( @_ > 0 ) {
       $self->Out->print(shift);
     }
@@ -3207,7 +3212,12 @@ stream.
     assert { $self->Out };
     $! = undef;
     if ( @_ > 1 ) {
-      $self->Out->say(sprintf(shift, @_));
+      my $format = shift;
+      if ( !defined $format ) {
+        confess("ArgumentNullException:\n". 
+          sprintf("$ResourceString{ArgumentNullException}\n", "format"));
+      }
+      $self->Out->say(sprintf($format, @_));
     } elsif ( @_ > 0 ) {
       $self->Out->say(shift);
     } else {
@@ -3435,20 +3445,10 @@ I<return> an hash reference with informations about the console.
       },
     };
 
-    my ( $throwOnNoConsole, $succeeded );
-    if ( @_ ) {
-      assert { @_ == 2 };
-      assert { is_Bool($_[0]) };
-      assert { is_Bool($_[1]) };
-      $throwOnNoConsole = $_[0];
-      $succeeded = \$_[1];
-    }
-    else {
-      assert { @_ == 0 };
-      $throwOnNoConsole = TRUE;
-      my $junk;
-      $succeeded = \$junk;
-    }
+    assert { @_ == 0 || @_ == 2 };
+    my $throwOnNoConsole = @_ > 1 ? assert_Bool(shift) : TRUE;
+    my $succeeded = @_ > 0 ? do { assert { is_Bool $_[0] }; \$_[0] }
+                           : do { my $junk; \$junk };
 
     $$succeeded = FALSE;
     my @csbi;
@@ -3493,7 +3493,8 @@ I<return> an hash reference with informations about the console.
         ) {
           return { %$CONSOLE_SCREEN_BUFFER_INFO };
         }
-        confess("WinIOError:\n$EXTENDED_OS_ERROR\n");
+        confess(sprintf("WinIOError:\n%s\n", 
+          Win32::FormatMessage($errorCode)));
       }
     }
 
@@ -3881,7 +3882,7 @@ I<return> of an IO::Handle of type I<DebugOutputTextWriter>.
 
 Create a reference to safe an existing file handle.
 
-I<param> $preexistingHandle is an C<GLOB> or L<IO::Handle> object that 
+I<param> $preexistingHandle is an IO::Handle object (or C<GLOB>) that 
 represents the pre-existing file handle to use.
 
 I<param> $ownsHandle should be set to true to reliably release the file handle 
