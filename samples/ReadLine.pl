@@ -2,19 +2,22 @@
 # This example demonstrates the System::Console->read() method.
 
 use 5.014;
-use Win32::Console::DotNet;
+use warnings;
 use DateTime;
 
-sub main() {
+use lib '../lib', 'lib';
+use Win32::Console::DotNet;
+use System;
+
+sub main {
   #
-  my $console = System::Console->instance();
-  $console->Clear();
+  Console->Clear();
 
-  my $dat = DateTime->now();
+  my $dat = DateTime->now(time_zone => 'local');
 
-  $console->Out->Write(sprintf("\nToday is %s at %s.", $dat->dmy('/'), $dat->hms));
-  $console->Out->Write("\nPress Enter key to continue... ");
-  $console->ReadLine();
+  Console->Write("\nToday is %s at %s.", $dat->dmy('/'), $dat->hms);
+  Console->Write("\nPress Enter key to continue... ");
+  Console->ReadLine();
   return 0;
 }
 
@@ -27,8 +30,8 @@ __END__
 =begin comment
 
 The example displays output like the following:
-     Today is 10/26/2015 at 12:22:22 PM.
+    Today is 10/26/2015 at 12:22:22 PM.
 
-     Press Enter key to continue...
+    Press Enter key to continue...
 
 =end comment

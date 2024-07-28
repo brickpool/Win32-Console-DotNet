@@ -1,5 +1,13 @@
 Revision history for Win32::Console::DotNet
 
+0.4     2024-07-28
+        - Add ConsoleColor and ConsoleKey constants
+        - Add ConsoleKeyInfo Object
+        - Add In/Out/Error support of various Code Page Identifiers
+        - Add/Change Examples, Tests
+        - Update Read() flush on input after receiving eof
+        - Change DebugOutputTextWriter to IO::DebugOutputTextWriter
+
 0.3.2   2024-07-28
         - Bugfix SetWindowSize/SetWindowPosition set incorrect attributes
         - Bugfix ReadKey meaning of KeyDown event

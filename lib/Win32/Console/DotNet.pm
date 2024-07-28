@@ -31,7 +31,7 @@ use namespace::sweep;
 
 # version '...'
 our $version = 'v4.6.0';
-our $VERSION = '0.003_001';
+our $VERSION = '0.004_000';
 $VERSION = eval $VERSION;
 
 # authority '...'
@@ -48,10 +48,10 @@ no if !STRICT, 'warnings', qw( void );
 use Config;
 use English qw( -no_match_vars );
 use IO::File;
+use IO::Handle;
 use IO::Null;
 use List::Util qw( max );
 use PerlX::Assert;
-use Symbol;
 use threads;
 use threads::shared;
 use Win32;
@@ -96,11 +96,13 @@ package Win32::Console::DotNet {
 =cut
 
   use namespace::sweep -also => [qw(
-    is_Object
     is_Bool
+    is_FileHandle
+    is_Object
     assert_ArrayRef
     assert_CodeRef
     assert_Str
+    assert_FileHandle
     assert_Object
     assert_Bool
     assert_Int
@@ -136,6 +138,23 @@ This module imports the following type constraints:
     Int
   );
 
+=item I<is_Bool>
+
+  sub is_Bool($value) : Bool
+
+Check for a reasonable boolean value. Accepts 1, 0, the empty string and undef.
+
+I<param> $value to be checked
+
+I<return> true if operand is boolean
+
+=cut
+
+  sub is_Bool($) {
+    assert { @_ == 1 };
+    return Bool->check($_[0]);
+  }
+
 =item I<is_Object>
 
   sub is_Object($value) : Bool
@@ -153,21 +172,28 @@ I<return> true if $value is blessed
     return Object->check($_[0]);
   }
 
-=item I<is_Bool>
+=item I<is_FileHandle>
 
-  sub is_Bool($value) : Bool
+  sub is_FileHandle($value) : Bool
 
-Check for a reasonable boolean value. Accepts 1, 0, the empty string and undef.
+Check for a file handle.
 
 I<param> $value to be checked
 
-I<return> true if operand is boolean
+I<return> true if $value is a file handle
 
 =cut
 
-  sub is_Bool($) {
+  sub is_FileHandle($) {
     assert { @_ == 1 };
-    return Bool->check($_[0]);
+    return
+      (ref($_[0]) eq 'GLOB')
+        || 
+      (tied($_[0]) && tied($_[0])->can('TIEHANDLE'))
+        || 
+      (is_Object($_[0]) && $_[0]->isa('IO::Handle'))
+        || 
+      (is_Object($_[0]) && $_[0]->isa('Tie::Handle'))
   }
 
 =item I<assert_ArrayRef>
@@ -232,6 +258,36 @@ I<throw> IllegalArgumentException if the check fails
     assert { @_ == 1 };
     unless ( Str->check($_[0]) ) {
       confess("IllegalArgumentException: %s\n", Str->get_message($_[0]));
+    }
+    return $_[0];
+  }
+
+=item I<assert_FileHandle>
+
+  sub assert_FileHandle($value) : FileHandle
+
+Check for a file handle.
+
+I<param> $value to be checked
+
+I<return> $value if $value is a file handle
+
+I<throw> IllegalArgumentException if the check fails
+
+=cut
+  sub assert_FileHandle($) {
+    assert { @_ == 1 };
+    unless ( is_FileHandle $_[0] ) {
+      require B;
+      my $value = shift;
+      my $name = 'FileHandle';
+      my $message = 
+        !defined($value)
+          ? sprintf("Undef did not pass type constraint %s", 'FileHandle')
+          : sprintf("Value %s did not pass type constraint %s", 
+              B::perlstring($_[0]), 'FileHandle')
+          ;
+      confess("IllegalArgumentException: %s\n", $message);
     }
     return $_[0];
   }
@@ -345,6 +401,18 @@ I<throw> IllegalArgumentException if the check fails
     virtualScanCode
     uChar
     controlKeyState
+
+    dwSizeX
+    dwSizeY
+    dwCursorPositionX
+    dwCursorPositionY
+    wAttributes
+    srWindowLeft
+    srWindowTop
+    srWindowRight
+    srWindowBottom
+    dwMaximumWindowSizeX
+    dwMaximumWindowSizeY
   )];
 
 =end private
@@ -542,6 +610,29 @@ I<see> KEY_EVENT_RECORD structure.
     controlKeyState => 6,
   };
 
+=pod
+
+Constants for accessing the console screen buffer array which contains 
+information about a console screen buffer.
+
+I<see> CONSOLE_SCREEN_BUFFER_INFO structure.
+
+=cut
+
+  use constant {
+    dwSizeX               => 0,
+    dwSizeY               => 1,
+    dwCursorPositionX     => 2,
+    dwCursorPositionY     => 3,
+    wAttributes           => 4,
+    srWindowLeft          => 5,
+    srWindowTop           => 6,
+    srWindowRight         => 7,
+    srWindowBottom        => 8,
+    dwMaximumWindowSizeX  => 9,
+    dwMaximumWindowSizeY  => 10,
+  };
+
 =end private
 
 =back
@@ -558,17 +649,15 @@ I<see> KEY_EVENT_RECORD structure.
 
 =over
 
-=item <_INSTANCES>
+=item <_instance>
 
-  my %_INSTANCES ( is => private, type => Hash ) = ();
+  my $_instance ( is => private, type => Object );
 
-The instance reference is stored in the %_INSTANCES hash.
-
-I<see> Class::Singelton
+The instance reference is stored in the I<$_instance> scalar.
 
 =cut
 
-  my %_INSTANCES = ();
+  my $_instance = undef;
 
 
 =item I<_in>
@@ -1153,7 +1242,7 @@ True if the cursor is visible; otherwise, false.
 
   field Error ( is => rwp, type => Defined );
 
-A IO::Handle that represents the standard error stream.
+A FileHandle that represents the standard error stream.
 
 =cut
 
@@ -1247,7 +1336,7 @@ valid.
 
   field In ( is => rwp, type => Defined );
 
-A IO::Handle that represents the standard input stream.
+A FileHandle that represents the standard input stream.
 
 =cut
 
@@ -1272,9 +1361,12 @@ A IO::Handle that represents the standard input stream.
         if ( !$s ) {
           $reader = IO::Null->new();
         } else {
-          my $enc = $_inputEncoding // Win32::GetConsoleCP();
+          my $enc = do {
+            my $cpi = $_inputEncoding // Win32::GetConsoleCP();
+            $cpi == 65001 ? ':encoding(UTF-8)' : ":encoding(cp$cpi)";
+          };
           $reader = IO::File->new_from_fd(fileno($s), 'r');
-          $reader->binmode(':encoding(UTF-8)') if $enc == 65001;
+          $reader->binmode($enc);
         }
         $self->$orig($_in = $reader);
       }
@@ -1338,7 +1430,7 @@ current input encoding.
         $_inputEncoding = $value;
 
         # We need to reinitialize Console->In in the next call to _in
-        # This will discard the current IO::Handle, potentially 
+        # This will discard the current FileHandle, potentially 
         # losing buffered data
         $_in = undef;
         return;
@@ -1594,7 +1686,7 @@ turned off.
 
   field Out ( is => rwp, type => Defined );
 
-A IO::Handle that represents the standard output stream.
+A FileHandle that represents the standard output stream.
 
 =cut
 
@@ -1996,17 +2088,15 @@ It is used to initialize the default I/O console.
 
 =cut
 
+  # https://www.perl.com/article/52/2013/12/11/Implementing-the-singleton-pattern-in-Perl/
   sub instance {
     assert { @_ == 1 };
     my $class = shift;
     # already got an object
     return $class if ref $class;
-    # store the instance against the $class key of %_INSTANCES
-    my $instance = $_INSTANCES{$class};
-    if ( !defined $instance ) {
-      $_INSTANCES{$class} = $instance = $class->new();
-    }
-    return $instance;
+    # create a instance and store it in $_instances if not already defined
+    $_instance = $class->new() unless $_instance;
+    return $_instance;
   }
 
 =back
@@ -2030,13 +2120,13 @@ Restore the console before destroying the instance/object.
 =cut
 
   #
-  # END block to explicitly destroy all Singleton objects since
+  # END block to explicitly destroy the Singleton object since
   # destruction order at program exit is not predictable.
   # see CPAN RT #23568 and #68526 for examples
   #
   END {
-    # dereferences and causes orderly destruction of all instances
-    undef(%_INSTANCES);
+    # dereferences and causes orderly destruction of the instance
+    undef($_instance);
   }
 
 =back
@@ -2504,11 +2594,13 @@ I<throws> IOException if an I/O error occurred.
     assert { @_ == 1 };
     my $self = assert_Object shift;
 
-    $self->In();
-    assert { $self->In };
-    $! = undef;
-    $self->In->sysread(my $ch, 1);
-    confess("IOException:\n$OS_ERROR\n") if $!;
+    assert_FileHandle $self->In;
+    my $r = $self->In->read(my $ch, 1);
+    if ( !$r ) {
+      confess("IOException:\n$OS_ERROR\n") unless defined $r;
+      # flush on stdin is not provided, so a loop is used  
+      1 while defined $self->In->getline();
+    }
     return $ch ? ord($ch) : -1;
   }
 
@@ -2655,7 +2747,7 @@ I<throws> IOException if an I/O error occurred.
     assert { @_ == 1 };
     my $self = assert_Object shift;
 
-    assert { $self->In };
+    assert_FileHandle $self->In;
     $! = undef;
     my $str = $self->In->getline();
     confess("IOException:\n$OS_ERROR\n") if $!;
@@ -2787,11 +2879,11 @@ starting at 0.
 
 =item I<SetError>
 
-  method SetError(IO::Handle $newError)
+  method SetError(FileHandle $newError)
 
-Sets the L</Error> attribute to the specified error IO::Handle.
+Sets the L</Error> attribute to the specified error FileHandle.
 
-I<param> $newError represents a IO::Handle that is the new standard error.
+I<param> $newError represents a FileHandle that is the new standard error.
 
 =cut
 
@@ -2813,9 +2905,9 @@ I<param> $newError represents a IO::Handle that is the new standard error.
 
 =item I<SetIn>
 
-  method SetIn(IO::Handle $newIn)
+  method SetIn(FileHandle $newIn)
 
-Sets the L</In> attribute to the specified input IO::Handle.
+Sets the L</In> attribute to the specified input FileHandle.
 
 I<param> $newIn represents a io handle that is the new standard input.
 
@@ -2839,9 +2931,9 @@ I<param> $newIn represents a io handle that is the new standard input.
 
 =item I<SetOut>
 
-  method SetOut(IO::Handle $newOut)
+  method SetOut(FileHandle $newOut)
 
-Sets the L</Out> attribute to the specified output IO::Handle.
+Sets the L</Out> attribute to the specified output FileHandle.
 
 I<param> $newOut represents a io handle that is the new standard output.
 
@@ -3107,8 +3199,7 @@ I<throws> IOException if an I/O error occurred.
     assert { @_ > 1 };
     my $self = assert_Object shift;
 
-    $self->Out();
-    assert { $self->Out };
+    assert_FileHandle $self->Out;
     $! = undef;
     if ( @_ > 1 ) {
       my $format = shift;
@@ -3209,8 +3300,7 @@ stream.
     assert { @_ > 0 };
     my $self = assert_Object shift;
 
-    $self->Out();
-    assert { $self->Out };
+    assert_FileHandle $self->Out;
     $! = undef;
     if ( @_ > 1 ) {
       my $format = shift;
@@ -3367,6 +3457,7 @@ I<return> true if the specified handle is writable, otherwise false.
     # parameter (nNumberOfBytesToWrite). 
     # According to the Windows API, it is intended that the value 0 performs a 
     # NULL write!
+    require Win32Native;
     my $r = Win32Native::WriteFile($outErrHandle, $junkByte, 0, $bytesWritten, 
       undef);
     # In Win32 apps w/ no console, bResult should be false for failure.
@@ -3509,23 +3600,23 @@ I<return> an hash reference with informations about the console.
     $$succeeded = TRUE;
     return {
       dwSize => {
-        X => $csbi[0],
-        Y => $csbi[1],
+        X => $csbi[dwSizeX],
+        Y => $csbi[dwSizeY],
       },
       dwCursorPosition => {
-        X => $csbi[2],
-        Y => $csbi[3],
+        X => $csbi[dwCursorPositionX],
+        Y => $csbi[dwCursorPositionY],
       },
-      wAttributes => $csbi[4],
+      wAttributes => $csbi[wAttributes],
       srWindow => {
-        Left    => $csbi[5],
-        Top     => $csbi[6],
-        Right   => $csbi[7],
-        Bottom  => $csbi[8],
+        Left    => $csbi[srWindowLeft],
+        Top     => $csbi[srWindowTop],
+        Right   => $csbi[srWindowRight],
+        Bottom  => $csbi[srWindowBottom],
       },
       dwMaximumWindowSize => {
-        X => $csbi[9],
-        Y => $csbi[10],
+        X => $csbi[dwMaximumWindowSizeX],
+        Y => $csbi[dwMaximumWindowSizeY],
       },
     }
   }
@@ -3533,7 +3624,7 @@ I<return> an hash reference with informations about the console.
 =item I<GetStandardFile>
 
   sub GetStandardFile(Int $stdHandleName, Str $access, 
-    Int $bufferSize) : IO::Handle
+    Int $bufferSize) : FileHandle
 
 This subroutine is only exposed via methods to get at the console.
 We won't use any security checks here.
@@ -3585,7 +3676,7 @@ STD_OUTPUT_HANDLE or STD_ERROR_HANDLE) or IO::Null in the event of an error.
     # Win32::OutputDebugString(sprintf("Console::GetStandardFile for std ".
     #   "handle %ld succeeded, returning handle number %d", 
     #   $stdHandleName, $handle)) if _DEBUG;
-    my $console = Symbol::gensym();
+    my $console = IO::Handle->new();
     my $sh = SafeFileHandle($console, FALSE);
     if ( !Win32API::File::OsFHandleOpen($sh, $handle, $access) ) {
       return IO::Null->new();
@@ -3617,17 +3708,20 @@ console access, or false if the Windows Console API should rather be used.
     switch: for ($handleType) {
 
       case: $_ == STD_INPUT_HANDLE and
-        return !IsStandardConsoleUnicodeEncoding(Win32::GetConsoleCP()) 
+        return !IsStandardConsoleUnicodeEncoding(
+          $_inputEncoding // Win32::GetConsoleCP()) 
             || 
           ($_isStdInRedirected // IsHandleRedirected(ConsoleInputHandle()));
 
       case: $_ == STD_OUTPUT_HANDLE and
-        return !IsStandardConsoleUnicodeEncoding(Win32::GetConsoleOutputCP()) 
+        return !IsStandardConsoleUnicodeEncoding(
+          $_outputEncoding // Win32::GetConsoleOutputCP()) 
             || 
           ($_isStdOutRedirected // IsHandleRedirected(ConsoleOutputHandle()));
 
       case: $_ == STD_ERROR_HANDLE and 
-        return !IsStandardConsoleUnicodeEncoding(Win32::GetConsoleOutputCP()) 
+        return !IsStandardConsoleUnicodeEncoding(
+          $_outputEncoding // Win32::GetConsoleOutputCP()) 
             || 
           ($_isStdErrRedirected // IsHandleRedirected(
             Win32::Console::_GetStdHandle(STD_ERROR_HANDLE)));
@@ -3694,9 +3788,13 @@ false if a standard error handle is to be initialized.
         }
       }
       else {
-        my $encoding = $_outputEncoding // Win32::GetConsoleOutputCP();
+        my $encoding = do {
+          my $cpi = $_outputEncoding;
+          $cpi //= $stdout ? Win32::GetConsoleOutputCP() : Win32::GetACP();
+          $cpi == 65001 ? ':encoding(UTF-8)' : ":encoding(cp$cpi)";
+        };
         my $stdxxx = IO::File->new_from_fd(fileno($s), 'w');
-        $stdxxx->binmode(':encoding(UTF-8)') if $encoding == 65001;
+        $stdxxx->binmode($encoding);
         $stdxxx->autoflush(TRUE);
         $writer = $stdxxx;
       }
@@ -3859,19 +3957,19 @@ I<return> true if the encoding uses a Windows Unicode encoding or false if not.
 
   sub MakeDebugOutputTextWriter(Str $streamLabel) : IO::Handle
 
-Creates an I<DebugOutputTextWriter> IO::Handle and returns it.
+Creates an I<IO::DebugOutputTextWriter> IO::Handle and returns it.
 
 I<param> $streamLabel contains a string which is prefixed to each output.
 
-I<return> of an IO::Handle of type I<DebugOutputTextWriter>.
+I<return> of an IO::Handle of type I<IO::DebugOutputTextWriter>.
 
 =cut
 
   sub MakeDebugOutputTextWriter {
-    require DebugOutputTextWriter;
+    require IO::DebugOutputTextWriter;
     assert { @_ == 1 };
     my $streamLabel = assert_Str shift;
-    my $output = DebugOutputTextWriter->new($streamLabel);
+    my $output = IO::DebugOutputTextWriter->new($streamLabel);
     $output->print("Output redirected to debugger from a bit bucket.");
     return $output;
   }
@@ -3883,31 +3981,20 @@ I<return> of an IO::Handle of type I<DebugOutputTextWriter>.
 
 Create a reference to safe an existing file handle.
 
-I<param> $preexistingHandle is an IO::Handle object (or C<GLOB>) that 
-represents the pre-existing file handle to use.
+I<param> $preexistingHandle is an FileHandle that represents the pre-existing 
+file handle to use.
 
 I<param> $ownsHandle should be set to true to reliably release the file handle 
 during the closing phase; false to prevent release.
 
-I<return> of the specified FileHandle.
+I<return> the specified FileHandle.
 
 =cut
 
   sub SafeFileHandle {
     assert { @_ == 2 };
-    my $preexistingHandle = shift;
+    my $preexistingHandle = assert_FileHandle shift;
     my $ownsHandle = assert_Bool shift;
-
-    assert { $preexistingHandle };
-    assert { # is_FileHandle
-      ref($preexistingHandle) eq 'GLOB' 
-        or 
-      tied($preexistingHandle) && tied($preexistingHandle)->can('TIEHANDLE')
-        or 
-      is_Object($preexistingHandle) && $preexistingHandle->isa('IO::Handle')
-        or 
-      is_Object($preexistingHandle) && $preexistingHandle->isa('Tie::Handle')
-    };
 
     my $hNativeHandle = Win32API::File::GetOsFHandle($preexistingHandle);
     if ( $hNativeHandle 
@@ -3956,7 +4043,7 @@ Methods inherited from class L<UNIVERSAL>
 #---------------
 package System {
 #---------------
-  use 5.014; 
+  use strict;
   use warnings;
   use Exporter qw( import );
   our @EXPORT = qw( Console );
@@ -3971,7 +4058,7 @@ package System {
 #--------------------
 package Win32Native {
 #--------------------
-  use 5.014; 
+  use strict;
   use warnings;
   use English qw( -no_match_vars );
   use Win32::API;
@@ -4001,10 +4088,10 @@ package Win32Native {
 
 # Most of the content was taken from L</IO::Null>, L</IO::String> and 
 # I<system.io.__debugoutputtextwriter.cs>
-#------------------------------
-package DebugOutputTextWriter {
-#------------------------------
-  use 5.014; 
+#----------------------------------
+package IO::DebugOutputTextWriter {
+#----------------------------------
+  use strict;
   use warnings;
   use Symbol ();
   use IO::Handle ();
@@ -4084,7 +4171,329 @@ package DebugOutputTextWriter {
     return $self;
   }
 
-  $INC{'DebugOutputTextWriter.pm'} = 1;
+  $INC{'IO/DebugOutputTextWriter.pm'} = 1;
+}
+
+# Specifies constants that define foreground and background colors for the 
+# console.
+#---------------------
+package ConsoleColor {
+#---------------------
+  use strict;
+  use warnings;
+  use constant _enum => qw(
+    Black
+    DarkBlue
+    DarkGreen
+    DarkCyan
+    DarkRed
+    DarkMagenta
+    DarkYellow
+    Gray
+    DarkGray
+    Blue
+    Green
+    Cyan
+    Red
+    Magenta
+    Yellow
+    White
+  );
+  BEGIN {
+    eval "use constant (_enum)[$_] => $_;" foreach 0..(_enum)-1;
+  }
+  use constant elements => grep {defined} _enum;
+  use constant values   => grep {defined((_enum)[$_])} 0..(_enum)-1;
+  use constant count    => +grep {defined} _enum;
+  sub get($;$) {
+    shift if @_ > 1 && defined($_[0]) && $_[0] eq __PACKAGE__;
+    my $key = shift // return;
+    (_enum)[$key];
+  };
+  $INC{'ConsoleColor.pm'} = 1;
+}
+
+# Specifies the standard keys on a console.
+#-------------------
+package ConsoleKey {
+#-------------------
+  use strict;
+  use warnings;
+  use constant _enum => qw(
+    None
+  ), (undef) x 7, qw(
+    Backspace
+    Tab
+  ), (undef) x 2, qw(
+    Clear
+    Enter
+  ), (undef) x 5, qw(
+    Pause
+  ), (undef) x 7, qw(
+    Escape
+  ), (undef) x 4, qw(
+    Spacebar
+    PageUp
+    PageDown
+    End
+    Home
+    LeftArrow
+    UpArrow
+    RightArrow
+    DownArrow
+    Select
+    Print
+    Execute
+    PrintScreen
+    Insert
+    Delete
+    Help
+    D0
+    D1
+    D2
+    D3
+    D4
+    D5
+    D6
+    D7
+    D8
+    D9
+  ), (undef) x 7, qw(
+    A
+    B
+    C
+    D
+    E
+    F
+    G
+    H
+    I
+    J
+    K
+    L
+    M
+    N
+    O
+    P
+    Q
+    R
+    S
+    T
+    U
+    V
+    W
+    X
+    Y
+    Z
+    LeftWindows
+    RightWindows
+    Applications
+  ), (undef) x 1, qw(
+    Sleep
+    NumPad0
+    NumPad1
+    NumPad2
+    NumPad3
+    NumPad4
+    NumPad5
+    NumPad6
+    NumPad7
+    NumPad8
+    NumPad9
+    Multiply
+    Add
+    Separator
+    Subtract
+    Decimal
+    Divide
+    F1
+    F2
+    F3
+    F4
+    F5
+    F6
+    F7
+    F8
+    F9
+    F10
+    F11
+    F12
+    F13
+    F14
+    F15
+    F16
+    F17
+    F18
+    F19
+    F20
+    F21
+    F22
+    F23
+    F24
+  ), (undef) x 30, qw(
+    BrowserBack
+    BrowserForward
+    BrowserRefresh
+    BrowserStop
+    BrowserSearch
+    BrowserFavorites
+    BrowserHome
+    VolumeMute
+    VolumeDown
+    VolumeUp
+    MediaNext
+    MediaPrevious
+    MediaStop
+    MediaPlay
+    LaunchMail
+    LaunchMediaSelect
+    LaunchApp1
+    LaunchApp2
+  ), (undef) x 2, qw(
+    Oem1
+    OemPlus
+    OemComma
+    OemMinus
+    OemPeriod
+    Oem2
+    Oem3
+  ), (undef) x 26, qw(
+    Oem4
+    Oem5
+    Oem6
+    Oem7
+    Oem8
+  ), (undef) x 2, qw(
+    Oem102
+  ), (undef) x 2, qw(
+    Process
+  ), (undef) x 1, qw(
+    Packet
+  ), (undef) x 14, qw(
+    Attention
+    CrSel
+    ExSel
+    EraseEndOfFile
+    Play
+    Zoom
+    NoName
+    Pa1
+    OemClear
+  );
+  BEGIN {
+    eval "use constant (_enum)[$_] => $_;" foreach 0..(_enum)-1;
+  }
+  use constant elements => grep {defined} _enum;
+  use constant values   => grep {defined((_enum)[$_])} 0..(_enum)-1;
+  use constant count    => +grep {defined} _enum;
+  sub get {
+    shift if @_ > 1 && defined($_[0]) && $_[0] eq __PACKAGE__;
+    my $key = shift // return;
+    (_enum)[$key];
+  };
+  $INC{'ConsoleKey.pm'} = 1;
+}
+
+# Describes the console key that was pressed, including the character 
+# represented by the console key and the state of the SHIFT, ALT, and CTRL 
+# modifier keys.
+#-----------------------
+package ConsoleKeyInfo {
+#-----------------------
+  use strict;
+  use warnings;
+  use Data::Dumper;
+
+  sub new { # $object ($class, \%arg | @args)
+    my $class = shift;
+    return unless $class && (@_ == 1 || @_ == 5);
+    my $self;
+    if ( @_ == 1 ) {
+      return unless ref($_[0])
+        && defined($_[0]->{Key}) 
+        && defined($_[0]->{KeyChar}) 
+        && defined($_[0]->{Modifiers});
+      $self = $_[0];
+    } else {
+      $self = {
+        Key => $_[0] // return,
+        KeyChar => $_[1] // return,
+        Modifiers => ($_[2] ? 2 : 0) | ($_[3] ? 1 : 0) | ($_[4] ? 4 : 0),
+      }
+    }
+    return bless $self, $class;
+  }
+
+  sub Key { # $key ($self)
+    my $self = shift;
+    return if !ref($self) || @_;
+    return $self->{Key};
+  }
+
+  sub KeyChar { # $keyChar ($self)
+    my $self = shift;
+    return if !ref($self) || @_;
+    return $self->{KeyChar};
+  }
+
+  sub Modifiers { # $modifiers ($self)
+    my $self = shift;
+    return if !ref($self) || @_;
+    return $self->{Modifiers};
+  }
+
+  sub Equals { # $bool ($lhs, $rhs)
+    my ($lhs, $rhs) = @_;
+    return unless ref($lhs) && ref($rhs) && @_ == 2;
+    return ref($lhs)         eq ref($rhs)
+        && $lhs->{Key}       == $rhs->{Key}
+        && $lhs->{KeyChar}   eq $rhs->{KeyChar}
+        && $lhs->{Modifiers} eq $rhs->{Modifiers};
+  }
+
+  sub ToString {
+    my $self = shift;
+    return if !ref($self) || @_;
+    local $Data::Dumper::Indent = 0;
+    local $Data::Dumper::Terse = 1;
+    local $Data::Dumper::Sortkeys = 1;
+    return Dumper({ %$self });
+  }
+
+  use overload (
+    '""' => sub { ToString(shift) },
+    'eq' => sub { Equals(shift, shift) },
+    'ne' => sub { !Equals(shift, shift) },
+  );
+
+  $INC{'ConsoleKeyInfo.pm'} = 1;
+}
+
+# Represents the SHIFT, ALT, and CTRL modifier keys on a keyboard.
+#-------------------------
+package ConsoleModifiers {
+#-------------------------
+  use strict;
+  use warnings;
+  use constant _enum => qw(
+    None
+    Alt
+    Shift
+  ), (undef) x 1, qw(
+    Control
+  );
+  BEGIN {
+    eval "use constant (_enum)[$_] => $_;" foreach 0..(_enum)-1;
+  }
+  use constant elements => grep {defined} _enum;
+  use constant values   => grep {defined((_enum)[$_])} 0..(_enum)-1;
+  use constant count    => +grep {defined} _enum;
+  sub get {
+    shift if @_ > 1 && defined($_[0]) && $_[0] eq __PACKAGE__;
+    my $key = shift // return;
+    (_enum)[$key];
+  };
+  $INC{'ConsoleModifiers.pm'} = 1;
 }
 
 __END__
@@ -4131,16 +4540,6 @@ __END__
 =head1 CONTRIBUTORS
 
 =over
-
-=item *
-
-1998-2008 by Andy Wardley E<lt>abw@wardley.orgE<gt> (Code snippet from 
-L<Class:Singleton>)
-
-=item *
-
-2014, 2020 by Steve Hay (Code snippet from 
-L<Class:Singleton>)
 
 =item *
 

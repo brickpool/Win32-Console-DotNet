@@ -4,7 +4,6 @@ use warnings;
 use Test::More;
 use Test::Exception;
 
-use Devel::StrictMode;
 use List::Util qw( min );
 use POSIX;
 use Scalar::Util qw( openhandle );
@@ -40,9 +39,9 @@ isa_ok(
 note 'Properties';
 #----------------
 
-is(
-  System::Console->BackgroundColor,
-  $BG_BLACK,
+my ($fg, $bg);
+lives_ok( 
+  sub { $bg = System::Console->BackgroundColor },
   'Console->BackgroundColor'
 );
 
@@ -86,9 +85,8 @@ ok(
   'Console->Error'
 );
 
-is(
-  System::Console->ForegroundColor,
-  $FG_LIGHTGRAY,
+lives_ok(
+  sub { $fg = System::Console->ForegroundColor },
   'Console->ForegroundColor'
 );
 
@@ -207,8 +205,8 @@ subtest 'ResetColor' => sub {
   lives_ok { System::Console->ForegroundColor($FG_YELLOW) } 'Console->ForegroundColor(14)';
   lives_ok { System::Console->BackgroundColor($BG_BLUE >> 4) } 'Console->BackgroundColor(1)';
   lives_ok { System::Console->ResetColor() } 'Console->ResetColor';
-  is System::Console->ForegroundColor, $FG_LIGHTGRAY, 'Console->ForegroundColor';
-  is System::Console->BackgroundColor, ($BG_BLACK >> 4), 'Console->BackgroundColor';
+  is System::Console->ForegroundColor, $fg, 'Console->ForegroundColor';
+  is System::Console->BackgroundColor, $bg, 'Console->BackgroundColor';
 };
 
 subtest 'SetBufferSize' => sub {
@@ -274,9 +272,15 @@ lives_ok(
   'Console->Beep'
 );
 
-lives_ok(
-  sub { my $key = System::Console->Read() if STRICT },
-  'Console->Read'
-);
+SKIP: {
+  skip 'Manual test not enabled', 1 unless $ENV{"MANUAL_TESTS"};
+  lives_ok(
+    sub {
+      System::Console->WriteLine("Please type somesting and press 'Enter'.");
+      my $key = System::Console->Read()
+    },
+    'Console->Read'
+  );
+};
 
 done_testing;

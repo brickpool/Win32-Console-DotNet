@@ -2,7 +2,11 @@
 # This example demonstrates the System::Console->Beep(Int, Int) method
 
 use 5.014;
+use warnings;
+
+use lib '../lib', 'lib';
 use Win32::Console::DotNet;
+use System;
 
 # Define the frequencies of notes in an octave, as well as
 # silence (rest).
@@ -50,7 +54,6 @@ my $mary = [
 # Play the notes in a song.
 sub play {
   my $tune = shift;
-  my $console = System::Console->instance();
   require Time::HiRes;
 
   foreach my $n (@$tune) {
@@ -58,12 +61,12 @@ sub play {
       Time::HiRes::sleep($n->{durVal}/1000);
     }
     else {
-      $console->Beep($n->{toneVal}, $n->{durVal});
+      Console->Beep($n->{toneVal}, $n->{durVal});
     }
   }
 }
 
-sub main() {
+sub main {
   # Play the song
   play($mary);
   return 0;

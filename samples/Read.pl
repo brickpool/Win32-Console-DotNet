@@ -1,11 +1,14 @@
 # https://learn.microsoft.com/en-us/dotnet/api/system.console.read?view=net-8.0
-# This example demonstrates the System::Console->read() method.
+# This example demonstrates the System::Console->Read() method.
 
 use 5.014;
-use Win32::Console::DotNet;
-use Try::Tiny;
+use warnings;
 
-sub main() {
+use lib '../lib', 'lib';
+use Win32::Console::DotNet;
+use System;
+
+sub main {
   my $m1 = "\nType a string of text then press Enter. " .
            "Type '+' anywhere in the text to quit:\n";
   my $m2 = "Character '%s' is hexadecimal %#.4x.";
@@ -14,26 +17,28 @@ sub main() {
   my $x;
    
   #
-  my $console = System::Console->instance();
-  say($m1);
+  Console->WriteLine($m1);
   do {
-    $x = $console->Read();
-    try {
-      $ch = $x < 0 ? die "Invalid value" : chr( $x );
+    $x = Console->Read();
+    try: eval {
+      die "Value was either too large or too small for a character.\n" 
+        if $x < 0;
+      $ch = chr $x;
       if ( $ch =~ /^\s+$/ ) {
-        printf($m3 . "\n", $x);
-        if ( $ch == 0x0a ) {
-          say($m1);
+        Console->WriteLine($m3, $x);
+        if ( $ch eq chr 0x0a ) {
+          Console->WriteLine($m1);
         }
       }
       else {
-        printf($m2 . "\n", $ch, $x);
+        Console->WriteLine($m2, $ch, $x);
       }
-    }
-    catch {
-      printf("%s Value read = %d.\n", $_, $x);
+    };
+    catch: if ( $@ ) {
+      chomp $@;
+      Console->WriteLine("%s Value read = %d.", $@, $x);
       $ch = "\0";
-      say($m1);
+      Console->WriteLine($m1);
     }
 
   }

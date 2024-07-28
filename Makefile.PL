@@ -69,6 +69,8 @@ WriteMakefile(
           'warnings'        => 0,
         },
         recommends => {
+          'autodie'         => 0,
+          'bytes'           => 0,
           'DateTime'        => 0,
           'Time::HiRes'     => 0,
           'Type::Tiny'      => 0,
@@ -76,9 +78,11 @@ WriteMakefile(
       },
       test => {
         requires => { # v5.14 builtin modules
+          'Class::Struct'   => 0,
           'FindBin'         => 0,
           'POSIX'           => 0,
           'Scalar::Util'    => 0,
+          'Time::HiRes'     => 0,
         },
       },
     },

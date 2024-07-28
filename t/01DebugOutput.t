@@ -16,11 +16,11 @@ BEGIN {
 
 BEGIN {
   use_ok 'Win32::Console::DotNet';
-  use_ok 'DebugOutputTextWriter';
+  use_ok 'IO::DebugOutputTextWriter';
 }
 
 my $stream;
-lives_ok { $stream = DebugOutputTextWriter->new() || die } 'new';
+lives_ok { $stream = IO::DebugOutputTextWriter->new() || die } 'new';
 lives_ok { $stream->open("[$Script] ") || die } 'open';
 lives_ok { $stream->print('Debug', 'View') } 'print';
 lives_ok { $stream->printf('printf? %s', 'works') } 'printf';

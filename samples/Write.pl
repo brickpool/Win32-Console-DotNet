@@ -3,27 +3,28 @@
 
 use 5.014;
 use warnings;
+
+use lib '../lib', 'lib';
 use Win32::Console::DotNet;
+use System;
 
 sub main {
-  my $console = System::Console->instance();
-
-  $console->Clear();
+  Console->Clear();
   # Format a integer or floating-point number in various ways.
-  $console->WriteLine("Standard Numeric Format Specifiers");
-  $console->Write("%08d\n", 123);
-  $console->Write("%.3f\n", -123.45);
-  $console->Write("%d = %f\n", 123, 123);
-  $console->WriteLine();
+  Console->WriteLine("Standard Numeric Format Specifiers");
+  Console->Write("%08d\n", 123);
+  Console->Write("%.3f\n", -123.45);
+  Console->Write("%d = %f\n", 123, 123);
+  Console->WriteLine();
 
   # Format a value in various ways.
-  $console->WriteLine("Standard Format Specifiers");
-  $console->WriteLine(123);
-  $console->WriteLine(-123.45);
-  $console->Write("\tTAB");
-  $console->WriteLine(undef);
+  Console->WriteLine("Standard Format Specifiers");
+  Console->WriteLine(123);
+  Console->WriteLine(-123.45);
+  Console->Write("\tTAB");
+  Console->WriteLine(undef);
 
-  $console->Write("--end--");
+  Console->Write("--end--");
   return 0;
 }
 
