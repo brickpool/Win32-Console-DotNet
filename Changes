@@ -1,22 +1,28 @@
 Revision history for Win32::Console::DotNet
 
+0.3.2   2024-07-28
+        - Bugfix SetWindowSize/SetWindowPosition set incorrect attributes
+        - Bugfix ReadKey meaning of KeyDown event
+        - Bugfix ReadKey dies if the event type is not KEY_EVENT or MOUSE_EVENT
+        - Bugfix Readline does not return undef for eof
+
 0.3.1   2024-07-05
         - Bugfix Beep, ReadKey, ReadLine
-        - Improvements for Pod/Doc
+        - Update Pod/Doc
 
 0.3     2024-07-03
-        - Extension for the use of threads
-        - Use of IO::Handle
+        - Add lock for the use in threads
+        - Add Use of IO::Handle
         - Add RessourceStrings for exceptions
 
 0.2.1   2024-06-25
-        - Correction of GetBufferInfo()
-        - Correction of some test cases
+        - Bugfix of GetBufferInfo()
+        - Bugfix of some test cases
 
 0.2     2024-02-26
-        - Change from Moo to Class::Tiny::Antlers
-        - Change from namespace::autoclean to namespace::sweep
-        - Use of Type::Nano
+        - Change from 'Moo' to 'Class::Tiny::Antlers'
+        - Change from 'namespace::autoclean' to 'namespace::sweep'
+        - Add use of 'Type::Nano'
         - Remove some dependencies
 
 0.1     2024-02-18

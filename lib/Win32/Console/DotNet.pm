@@ -1465,7 +1465,6 @@ Gets a value indicating whether a key press is available in the input stream.
       my $numEventsRead = 0;
       while (TRUE) {
         my $r = do {
-          Win32::SetLastError(0);
           @ir = Win32::Console::_PeekConsoleInput(ConsoleInputHandle());
           $numEventsRead = 0 + (@ir > 1);
           Win32::GetLastError() == 0;
@@ -1490,9 +1489,7 @@ Gets a value indicating whether a key press is available in the input stream.
           #
 
           $r = do {
-            Win32::SetLastError(0);
             @ir = Win32::Console::_ReadConsoleInput(ConsoleInputHandle());
-            $numEventsRead = 0 + (@ir > 1);
             Win32::GetLastError() == 0;
           };
 
@@ -2507,6 +2504,7 @@ I<throws> IOException if an I/O error occurred.
     assert { @_ == 1 };
     my $self = assert_Object shift;
 
+    $self->In();
     assert { $self->In };
     $! = undef;
     $self->In->sysread(my $ch, 1);
@@ -2559,10 +2557,11 @@ modifier keys was pressed simultaneously with the console key.
 
         while (TRUE) {
           $r = do {
-            Win32::SetLastError(0);
             @ir = Win32::Console::_ReadConsoleInput(ConsoleInputHandle());
-            $numEventsRead = 0 + (@ir > 1);
-            Win32::GetLastError() == 0;
+            my $errorCode = Win32::GetLastError();
+            $numEventsRead = $errorCode ? 0 : 1;
+            $ir[0] //= 0;
+            $errorCode == 0;
           };
           if ( !$r || $numEventsRead == 0 ) {
             # This will fail when stdin is redirected from a file or pipe.
@@ -2572,7 +2571,7 @@ modifier keys was pressed simultaneously with the console key.
               "$ResourceString{InvalidOperation_ConsoleReadKeyOnFile}\n");
           }
 
-          my $keyCode = $ir[virtualKeyCode];
+          my $keyCode = $ir[virtualKeyCode] // 0;
 
           # First check for non-keyboard events & discard them. Generally we tap 
           # into only KeyDown events and ignore the KeyUp events but it is 
@@ -2582,7 +2581,7 @@ modifier keys was pressed simultaneously with the console key.
           # key is down, we should eat up any intermediate key strokes (from 
           # NumPad) that collectively forms the Unicode character.  
 
-          if ( IsKeyDownEvent(\@ir) ) {
+          if ( !IsKeyDownEvent(\@ir) ) {
             #
             next if $keyCode != AltVKCode;
           }
@@ -2658,9 +2657,9 @@ I<throws> IOException if an I/O error occurred.
 
     assert { $self->In };
     $! = undef;
-    my $str = $self->In->getline() // '';
+    my $str = $self->In->getline();
     confess("IOException:\n$OS_ERROR\n") if $!;
-    chomp $str;
+    chomp $str if defined $str;
     return $str;
   }
 
@@ -2968,8 +2967,8 @@ I<param> $height of the console window measured in rows.
     }
     $self->{WindowLeft} = $srWindow->{Left};
     $self->{WindowTop} = $srWindow->{Top};
-    $self->{windowRight} = $srWindow->{Right};
-    $self->{windowBottom} = $srWindow->{Bottom};
+    $self->{WindowWidth} = $srWindow->{Right} - $srWindow->{Left} + 1;
+    $self->{WindowHeight} = $srWindow->{Bottom} - $srWindow->{Top} + 1;
 
     return;
   }
@@ -3025,8 +3024,8 @@ I<param> $top corner of the console window.
 
     $self->{WindowLeft} = $srWindow->{Left};
     $self->{WindowTop} = $srWindow->{Top};
-    $self->{windowRight} = $srWindow->{Right};
-    $self->{windowBottom} = $srWindow->{Bottom};
+    $self->{WindowWidth} = $srWindow->{Right} - $srWindow->{Left} + 1;
+    $self->{WindowHeight} = $srWindow->{Bottom} - $srWindow->{Top} + 1;
 
     return;
   }
@@ -3108,6 +3107,7 @@ I<throws> IOException if an I/O error occurred.
     assert { @_ > 1 };
     my $self = assert_Object shift;
 
+    $self->Out();
     assert { $self->Out };
     $! = undef;
     if ( @_ > 1 ) {
@@ -3209,6 +3209,7 @@ stream.
     assert { @_ > 0 };
     my $self = assert_Object shift;
 
+    $self->Out();
     assert { $self->Out };
     $! = undef;
     if ( @_ > 1 ) {
@@ -3625,7 +3626,7 @@ console access, or false if the Windows Console API should rather be used.
             || 
           ($_isStdOutRedirected // IsHandleRedirected(ConsoleOutputHandle()));
 
-      case: $_ == STD_ERROR_HANDLE and
+      case: $_ == STD_ERROR_HANDLE and 
         return !IsStandardConsoleUnicodeEncoding(Win32::GetConsoleOutputCP()) 
             || 
           ($_isStdErrRedirected // IsHandleRedirected(
