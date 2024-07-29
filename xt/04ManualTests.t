@@ -27,19 +27,12 @@ package ConsoleManualTests {
   use warnings;
 
   require bytes;
-  use Errno qw( EBADF );
   use PerlX::Assert -check;
   use Test::More;
-  use threads;
-  use threads::shared;
   use Time::HiRes;
   use Win32;
-  use Win32::Console ();
-  use Win32API::File qw( 
-    :FILE_TYPE_
-    :STD_HANDLE_
-    :Misc
-  );
+  use Win32::Console;
+  use Win32API::File;
 
   BEGIN {
     use_ok 'Win32::Console::DotNet';
@@ -340,67 +333,30 @@ package ConsoleManualTests {
   }
 
   sub ResizeTest { # void ()
-    my $wasResized :shared = FALSE;
-
-    async { # SIGWINCH
-      my ($row, $col);
-      my $hConsoleOutput = Win32API::File::GetStdHandle(STD_OUTPUT_HANDLE);
-      if ( !$hConsoleOutput || $hConsoleOutput == INVALID_HANDLE_VALUE ) {
-        die "$^E";
-      }
-      my $uFileType = Win32API::File::GetFileType($hConsoleOutput);
-      if ( !$uFileType || $uFileType != FILE_TYPE_CHAR ) {
-        $! = EBADF;
-        die "$!";
-      }
-      my $csbi = CONSOLE_SCREEN_BUFFER_INFO->new();
-
-      for (;;) {
-        threads->yield();
-        my $r = do { # $bool ($hConsoleOutput, $lpConsoleScreenBufferInfo)
-          Win32::SetLastError(0);
-          my @ir = Win32::Console::_GetConsoleScreenBufferInfo($hConsoleOutput);
-          my $n = @ir;
-          splice(@$csbi, 0, $n, @ir) if @$csbi == $n;
-          Win32::GetLastError() == 0;
-        };
-        if ( !$r ) {
-          die "$^E";
-        }
-        my $width = $csbi->srWindowRight - $csbi->srWindowLeft + 1;
-        my $height = $csbi->srWindowBottom - $csbi->srWindowTop + 1;
-        # init columns and rows if not already done
-        $row //= $width;
-        $col //= $height;
-        if ( $row != $width || $col != $height ) {
-          {
-            lock $wasResized;
-            $wasResized = TRUE;
-          }
-          $row = $width;
-          $col = $height;
-        }
-        # poll every 20 ms
-        Time::HiRes::sleep(20/1000);
-      }
-
-    }->detach();
+    my $wasResized = FALSE;
 
     my $widthBefore = System::Console->WindowWidth;
     my $heightBefore = System::Console->WindowHeight;
 
-    {
-      lock $wasResized;
-      assert 'False' { !$wasResized };
-    }
+    assert 'False' { !$wasResized };
 
     System::Console->SetWindowSize(int($widthBefore / 2), int($heightBefore / 2));
 
-    Time::HiRes::sleep(50/1000);
-    {
-      lock $wasResized; 
-      assert 'True' { $wasResized };
-    }
+    my $manualResetEvent = eval {
+      Time::HiRes::sleep(50/1000);
+      my $hConsoleOutput = Win32::Console::_GetStdHandle(STD_OUTPUT_HANDLE) // -1;
+      assert { $hConsoleOutput > 0 };
+      my $uFileType = Win32API::File::GetFileType($hConsoleOutput) // 0;
+      assert { $uFileType == Win32API::File::FILE_TYPE_CHAR };
+      my @ir = Win32::Console::_GetConsoleScreenBufferInfo($hConsoleOutput);
+      assert { @ir > 1 };
+      my $width = $ir[7] - $ir[5] + 1;
+      my $height = $ir[8] - $ir[6] + 1;
+      $wasResized = $widthBefore != $width || $heightBefore != $height;
+      1;
+    };
+    assert 'True' { $manualResetEvent };
+    assert 'True' { $wasResized };
     assert 'Equal' { int($widthBefore / 2) == System::Console->WindowWidth };
     assert 'Equal' { int($heightBefore / 2) == System::Console->WindowHeight };
 

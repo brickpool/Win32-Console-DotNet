@@ -1,5 +1,9 @@
 Revision history for Win32::Console::DotNet
 
+0.4.1   2024-07-29
+        - Bugfix ResizeTest() in 04ManualTest.pl
+        - Bugfix ReadKey #6 Return value
+
 0.4     2024-07-28
         - Add ConsoleColor and ConsoleKey constants
         - Add ConsoleKeyInfo Object

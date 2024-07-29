@@ -31,7 +31,7 @@ use namespace::sweep;
 
 # version '...'
 our $version = 'v4.6.0';
-our $VERSION = '0.004_000';
+our $VERSION = '0.004_001';
 $VERSION = eval $VERSION;
 
 # authority '...'
@@ -1559,7 +1559,7 @@ Gets a value indicating whether a key press is available in the input stream.
         my $r = do {
           @ir = Win32::Console::_PeekConsoleInput(ConsoleInputHandle());
           $numEventsRead = 0 + (@ir > 1);
-          Win32::GetLastError() == 0;
+          @ir != 1;
         };
         if ( !$r ) {
           my $errorCode = Win32::GetLastError();
@@ -1582,7 +1582,9 @@ Gets a value indicating whether a key press is available in the input stream.
 
           $r = do {
             @ir = Win32::Console::_ReadConsoleInput(ConsoleInputHandle());
-            Win32::GetLastError() == 0;
+            $numEventsRead = 0 + (@ir != 1);
+            @ir = (0) x 6 unless $ir[0];
+            !!$numEventsRead;
           };
 
           if ( !$r ) {
@@ -2650,10 +2652,9 @@ modifier keys was pressed simultaneously with the console key.
         while (TRUE) {
           $r = do {
             @ir = Win32::Console::_ReadConsoleInput(ConsoleInputHandle());
-            my $errorCode = Win32::GetLastError();
-            $numEventsRead = $errorCode ? 0 : 1;
-            $ir[0] //= 0;
-            $errorCode == 0;
+            $numEventsRead = 0 + (@ir != 1);
+            @ir = (0) x 6 unless $ir[0];
+            !!$numEventsRead;
           };
           if ( !$r || $numEventsRead == 0 ) {
             # This will fail when stdin is redirected from a file or pipe.
@@ -2663,7 +2664,7 @@ modifier keys was pressed simultaneously with the console key.
               "$ResourceString{InvalidOperation_ConsoleReadKeyOnFile}\n");
           }
 
-          my $keyCode = $ir[virtualKeyCode] // 0;
+          my $keyCode = $ir[virtualKeyCode];
 
           # First check for non-keyboard events & discard them. Generally we tap 
           # into only KeyDown events and ignore the KeyUp events but it is 
