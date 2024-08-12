@@ -1,3 +1,7 @@
+# https://toby.ink/blog/2023/01/24/perl-testing-in-2023/
+# loads all of my modules, or at least the important ones, then passes without
+# any real testing being done. The purpose of this is to quickly check for 
+# syntax errors so extreme that they prevent your code from even compiling. 
 use 5.014;
 use warnings;
 
