@@ -31,7 +31,7 @@ use namespace::sweep;
 
 # version '...'
 our $version = 'v4.6.0';
-our $VERSION = '0.004_001';
+our $VERSION = '0.004002';
 $VERSION = eval $VERSION;
 
 # authority '...'
@@ -278,15 +278,15 @@ I<throw> IllegalArgumentException if the check fails
   sub assert_FileHandle($) {
     assert { @_ == 1 };
     unless ( is_FileHandle $_[0] ) {
-      require B;
-      my $value = shift;
-      my $name = 'FileHandle';
+        require B;
+        my $value = shift;
+        my $name = 'FileHandle';
       my $message = 
-        !defined($value)
-          ? sprintf("Undef did not pass type constraint %s", 'FileHandle')
-          : sprintf("Value %s did not pass type constraint %s", 
-              B::perlstring($_[0]), 'FileHandle')
-          ;
+          !defined($value)
+            ? sprintf("Undef did not pass type constraint %s", 'FileHandle')
+            : sprintf("Value %s did not pass type constraint %s", 
+                B::perlstring($_[0]), 'FileHandle')
+            ;
       confess("IllegalArgumentException: %s\n", $message);
     }
     return $_[0];
@@ -413,7 +413,7 @@ I<throw> IllegalArgumentException if the check fails
     srWindowBottom
     dwMaximumWindowSizeX
     dwMaximumWindowSizeY
-  )];
+  )]; 
 
 =end private
 
@@ -511,8 +511,8 @@ order) or 1201 (big endian byte order).
 =cut
 
   use constant StdConUnicodeEncoding => {
-    CodePage  => $Config{byteorder} == 1234 ? 1200 : 1201,
-    bigEndian => $Config{byteorder} == 4321 ? 1 : 0,
+    CodePage  => $Config{byteorder} =~ /1234/ ? 1200 : 1201,
+    bigEndian => $Config{byteorder} & 0b1,
   };
 
 =item I<WinError.h>
@@ -791,7 +791,7 @@ For L</IsErrorRedirected>
 Private variable for locking instead of locking on a public type for SQL 
 reliability work.
 
-Use this for internal synchronization during initialization, wiring up events, 
+Use this for internal synchronization during initialization, wiring up events,
 or for short, non-blocking OS calls.
 
 =item I<ReadKeySyncObject>
@@ -937,7 +937,7 @@ valid.
     goto SET if @_;
     GET: {
       my $succeeded;
-      my $csbi = GetBufferInfo(FALSE, $succeeded);
+      my $csbi = GetBufferInfo(FALSE, \$succeeded);
 
       # For code that may be used from Windows app w/ no console
       if ( !$succeeded ) {
@@ -961,7 +961,7 @@ valid.
       my $c = ConsoleColorToColorAttribute($value, TRUE);
 
       my $succeeded;
-      my $csbi = GetBufferInfo(FALSE, $succeeded);
+      my $csbi = GetBufferInfo(FALSE, \$succeeded);
       # For code that may be used from Windows app w/ no console
       return if !$succeeded;
 
@@ -1291,7 +1291,7 @@ valid.
     goto SET if @_;
     GET: {
       my $succeeded;
-      my $csbi = GetBufferInfo(FALSE, $succeeded);
+      my $csbi = GetBufferInfo(FALSE, \$succeeded);
 
       # For code that may be used from Windows app w/ no console
       if ( !$succeeded ) {
@@ -1314,7 +1314,7 @@ valid.
       my $c = ConsoleColorToColorAttribute($value, FALSE);
 
       my $succeeded;
-      my $csbi = GetBufferInfo(FALSE, $succeeded);
+      my $csbi = GetBufferInfo(FALSE, \$succeeded);
       # For code that may be used from Windows app w/ no console
       return if !$succeeded;
 
@@ -1410,7 +1410,7 @@ current input encoding.
     }
     SET: {
       my $value = shift;
-      if ( !defined $value ) {
+      if ( !$value ) {
         confess("ArgumentNullException:\n". 
           sprintf("$ResourceString{ArgumentNullException}\n", "value"));
       }
@@ -1423,7 +1423,7 @@ current input encoding.
           my $cp = $value;
           my $r = Win32::SetConsoleCP($cp);
           if ( !$r ) {
-            confess("WinIOError:\n$EXTENDED_OS_ERROR\n");
+            warn("WinIOError:\n$EXTENDED_OS_ERROR\n");
           }
         }
 
@@ -1750,7 +1750,7 @@ current output encoding.
     }
     SET: {
       my $value = shift;
-      if ( !defined $value ) {
+      if ( !$value ) {
         confess("ArgumentNullException:\n". 
           sprintf("$ResourceString{ArgumentNullException}\n", "value"));
       }
@@ -1762,11 +1762,11 @@ current output encoding.
         # if Out hasn't been redirected. Also, have the next call to  
         # $_out reinitialize the console code page.
 
-        if ( $self->Out && !$self->IsOutputRedirected ) {
+        if ( eval { $self->Out } && !$self->IsOutputRedirected ) {
           $self->Out->flush();
           $_out = undef;
         }
-        if ( $self->Error && !$self->IsErrorRedirected ) {
+        if ( eval { $self->Error } && !$self->IsErrorRedirected ) {
           $self->Error->flush();
           $_error = undef;
         }
@@ -1775,13 +1775,13 @@ current output encoding.
           my $cp = $value;
           my $r = Win32::SetConsoleOutputCP($cp);
           if ( !$r ) {
-            confess("WinIOError:\n$EXTENDED_OS_ERROR\n");
+            warn("WinIOError:\n$EXTENDED_OS_ERROR\n");
           }
         }
 
         $_outputEncoding = $value;
         return;
-      }
+      } # set
     }
   };
 
@@ -2090,7 +2090,6 @@ It is used to initialize the default I/O console.
 
 =cut
 
-  # https://www.perl.com/article/52/2013/12/11/Implementing-the-singleton-pattern-in-Perl/
   sub instance {
     assert { @_ == 1 };
     my $class = shift;
@@ -2602,8 +2601,9 @@ I<throws> IOException if an I/O error occurred.
       confess("IOException:\n$OS_ERROR\n") unless defined $r;
       # flush on stdin is not provided, so a loop is used  
       1 while defined $self->In->getline();
+      return -1;
     }
-    return $ch ? ord($ch) : -1;
+    return ord($ch);
   }
 
 =item I<ReadKey>
@@ -2771,7 +2771,7 @@ I<throws> IOException if an I/O error occurred.
     my $self = assert_Object shift;
 
     my $succeeded;
-    my $csbi = GetBufferInfo(FALSE, $succeeded);
+    my $csbi = GetBufferInfo(FALSE, \$succeeded);
     return if !$succeeded;
 
     assert "Setting the color attributes before we've read the default color attributes!"
@@ -3500,7 +3500,7 @@ I<return> the standard output handle to the standard output device.
 =item I<GetBufferInfo>
 
   sub GetBufferInfo() : HashRef
-  sub GetBufferInfo(Bool $throwOnNoConsole, Bool $succeeded) : HashRef
+  sub GetBufferInfo(Bool $throwOnNoConsole, Ref[Bool] $succeeded) : HashRef
 
 Simplifies the use of GetConsoleScreenBufferInfo().
 
@@ -3539,9 +3539,9 @@ I<return> an hash reference with informations about the console.
     };
 
     assert { @_ == 0 || @_ == 2 };
-    my $throwOnNoConsole = @_ > 1 ? assert_Bool(shift) : TRUE;
-    my $succeeded = @_ > 0 ? do { assert { is_Bool $_[0] }; \$_[0] }
-                           : do { my $junk; \$junk };
+    my $throwOnNoConsole = @_ ? assert_Bool(shift) : TRUE;
+    my $succeeded = @_ ? do { assert { ref($_[0]) && is_Bool($$_[0]) }; shift }
+                       : do { my $junk; \$junk };
 
     $$succeeded = FALSE;
     my @csbi;
@@ -4407,18 +4407,24 @@ package ConsoleKeyInfo {
 
   sub new { # $object ($class, \%arg | @args)
     my $class = shift;
-    return unless $class && (@_ == 1 || @_ == 5);
+    return unless $class && (@_ == 0 || @_ == 1 || @_ == 5);
     my $self;
-    if ( @_ == 1 ) {
+    if ( @_ == 0 ) {
+      $self = {
+        KeyChar => "\0",
+        Key => 0,
+        Modifiers => 0,
+      }
+    } elsif ( @_ == 1 ) {
       return unless ref($_[0])
-        && defined($_[0]->{Key}) 
         && defined($_[0]->{KeyChar}) 
+        && defined($_[0]->{Key}) 
         && defined($_[0]->{Modifiers});
       $self = $_[0];
     } else {
       $self = {
-        Key => $_[0] // return,
-        KeyChar => $_[1] // return,
+        KeyChar => $_[0] // return,
+        Key => $_[1] // return,
         Modifiers => ($_[2] ? 2 : 0) | ($_[3] ? 1 : 0) | ($_[4] ? 4 : 0),
       }
     }

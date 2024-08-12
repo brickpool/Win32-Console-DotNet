@@ -132,22 +132,19 @@ __END__
 
 =pod
 
-=begin comment
-
 This example produces results similar to the following:
 
-1) Press the cursor keys to move the console window.
-2) Press any key to begin. When you're finished...
-3) Press the Escape key to quit.
+  1) Press the cursor keys to move the console window.
+  2) Press any key to begin. When you're finished...
+  3) Press the Escape key to quit.
 
-...
+  ...
 
-+----+----+----+-
-|    |    |    |
-|    |    |    |
-+----+----+----+-
-|    |    |    |
-|    |    |    |
-+----+----+----+-
+  +----+----+----+-
+  |    |    |    |
+  |    |    |    |
+  +----+----+----+-
+  |    |    |    |
+  |    |    |    |
+  +----+----+----+-
 
-=end comment

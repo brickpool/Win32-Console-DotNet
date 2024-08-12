@@ -1,7 +1,6 @@
 # https://github.com/dotnet/runtime/blob/116f5fd624c6981a66c2a03c5ea5f8fa037ef57f/src/libraries/System.Console/tests/ManualTests/ManualTests.cs
-# For verifying console functionality that cannot be run as fully automated.
-# To run the suite, enable the manual testing by defining the 'MANUAL_TESTS' environment variable.
-
+# Licensed to the .NET Foundation under one or more agreements.
+# The .NET Foundation licenses this file to you under the MIT license.
 use 5.014;
 use warnings;
 
@@ -69,32 +68,24 @@ package ConsoleManualTests {
     ResizeTest
   );
 
-  use constant ManualTestsEnabled => $ENV{"MANUAL_TESTS"};
-
+  use constant ManualTestsEnabled => exists($ENV{MANUAL_TESTS})
+                                  && !$ENV{AUTOMATED_TESTING}
+                                  && !$ENV{NONINTERACTIVE_TESTING};
   use constant FALSE  => !!'';
   use constant TRUE   => !!1;
 
-  use Class::Struct CONSOLE_SCREEN_BUFFER_INFO => [
-    dwSizeX               => '$',
-    dwSizeY               => '$',
-    dwCursorPositionX     => '$',
-    dwCursorPositionY     => '$',
-    wAttributes           => '$',
-    srWindowLeft          => '$',
-    srWindowTop           => '$',
-    srWindowRight         => '$',
-    srWindowBottom        => '$',
-    dwMaximumWindowSizeX  => '$',
-    dwMaximumWindowSizeY  => '$',
-  ];
-
   sub ReadLine { # void ($consoleIn)
     my ($consoleIn) = @_;
-    my $expectedLine = "This is a test of Console->".($consoleIn ? "In->" : "")."ReadLine.";
-    System::Console->WriteLine("Please type the sentence (without the quotes): \"$expectedLine\"");
-    my $result = $consoleIn ? System::Console->In->getline() : System::Console->ReadLine();
+    my $expectedLine = "This is a test of Console->". 
+      ($consoleIn ? "In->" : "") ."ReadLine.";
+    System::Console->WriteLine("Please type the sentence ". 
+      "(without the quotes): \"$expectedLine\"");
+    my $result = $consoleIn 
+      ? System::Console->In->getline() 
+      : System::Console->ReadLine();
     assert 'Equal' { index($result, $expectedLine) == 0 };
-    AssertUserExpectedResults("the characters you typed properly echoed as you typed");
+    AssertUserExpectedResults("the characters you typed properly echoed as ". 
+      "you typed");
     return;
   }
 
@@ -102,46 +93,58 @@ package ConsoleManualTests {
     my $expectedLine = "aab";
 
     # Use Console->ReadLine
-    System::Console->WriteLine("Please type 'a' 3 times, press 'Backspace' to erase 1, then type a single 'b' and press 'Enter'.");
+    System::Console->WriteLine("Please type 'a' 3 times, press 'Backspace' ".
+      " to erase 1, then type a single 'b' and press 'Enter'.");
     my $result = System::Console->ReadLine();
     assert 'Equal' { index($result, $expectedLine) == 0 };
-    AssertUserExpectedResults("the characters you typed properly echoed as you typed");
+    AssertUserExpectedResults("the characters you typed properly echoed as ". 
+      "you typed");
 
     # getline from Console->OpenStandardInput
-    System::Console->WriteLine("Please type 'a' 3 times, press 'Backspace' to erase 1, then type a single 'b' and press 'Enter'.");
+    System::Console->WriteLine("Please type 'a' 3 times, press 'Backspace' ". 
+      "to erase 1, then type a single 'b' and press 'Enter'.");
     my $reader = System::Console->OpenStandardInput();
     $result = $reader->getline();
     assert 'Equal' { index($result, $expectedLine) == 0 };
-    AssertUserExpectedResults("the characters you typed properly echoed as you typed");
+    AssertUserExpectedResults("the characters you typed properly echoed as ". 
+      "you typed");
   }
 
   sub ReadFromOpenStandardInput { # void ()
-    # The implementation in StdInReader uses a StringBuilder for caching. We want this builder to use
-    # multiple chunks. So the expectedLine is longer than 16 characters (StringBuilder.DefaultCapacity).
+    # The implementation in StdInReader uses a StringBuilder for caching. We 
+    # want this builder to use multiple chunks. So the expectedLine is longer 
+    # than 16 characters (StringBuilder.DefaultCapacity).
     my $expectedLine = "This is a test for ReadFromOpenStandardInput.";
     assert 'True' { length($expectedLine) > 16 };
-    System::Console->WriteLine("Please type the sentence (without the quotes): \"$expectedLine\"");
+    System::Console->WriteLine("Please type the sentence ". 
+      "(without the quotes): \"$expectedLine\"");
     my $inputStream = System::Console->OpenStandardInput();
     for (my $i = 0; $i < length($expectedLine); $i++) {
-      assert 'Equal' { bytes::substr($expectedLine, $i, 1) eq ($inputStream->sysread($_, 1) ? $_ : '') };
+      assert 'Equal' { bytes::substr($expectedLine, $i, 1) 
+        eq ($inputStream->sysread($_, 1) ? $_ : '') };
     }
     assert 'Equal' { "\n" eq ($inputStream->read($_, 1) ? $_ : '') };
-    AssertUserExpectedResults("the characters you typed properly echoed as you typed");
+    AssertUserExpectedResults("the characters you typed properly echoed as ". 
+      "you typed");
   }
 
   sub ConsoleReadSupportsBackspace { # void ()
     my $expectedLine = "aab\n";
 
-    System::Console->WriteLine("Please type 'a' 3 times, press 'Backspace' to erase 1, then type a single 'b' and press 'Enter'.");
+    System::Console->WriteLine("Please type 'a' 3 times, press 'Backspace' ". 
+      "to erase 1, then type a single 'b' and press 'Enter'.");
     foreach my $c ( split //, $expectedLine ) {
       my $ch = System::Console->Read();
       assert 'Equal' { $c eq chr $ch };
     }
-    AssertUserExpectedResults("the characters you typed properly echoed as you typed");
+    AssertUserExpectedResults("the characters you typed properly echoed as ". 
+      "you typed");
   }
 
   sub ReadLine_BackSpaceCanMoveAcrossWrappedLines { # void ()
-    System::Console->WriteLine("Please press 'a' until it wraps to the next terminal line, then press 'Backspace' until the input is erased, and then type a single 'a' and press 'Enter'.");
+    System::Console->WriteLine("Please press 'a' until it wraps to the next ". 
+      "terminal line, then press 'Backspace' until the input is erased, ". 
+      "and then type a single 'a' and press 'Enter'.");
     System::Console->Write("Input: ");
     System::Console->Out->flush();
 
@@ -151,14 +154,16 @@ package ConsoleManualTests {
   }
 
   sub InPeek { # void ()
-    System::Console->WriteLine("Please type \"peek\" (without the quotes). You should see it as you type:");
+    System::Console->WriteLine("Please type \"peek\" (without the quotes). ". 
+      "You should see it as you type:");
     foreach my $c ( 'p', 'e', 'e', 'k' ) {
       assert 'Equal' { $c eq System::Console->In->Peek() };
       assert 'Equal' { $c eq System::Console->In->Peek() };
       assert 'Equal' { $c eq System::Console->In->Peek() };
     }
     System::Console->In->getline(); # enter
-    AssertUserExpectedResults("the characters you typed properly echoed as you typed");
+    AssertUserExpectedResults("the characters you typed properly echoed as ". 
+      "you typed");
   }
 
   sub Beep { # void ()
@@ -167,15 +172,18 @@ package ConsoleManualTests {
   }
 
   sub ReadKey { # void ()
-    System::Console->WriteLine("Please type \"console\" (without the quotes). You shouldn't see it as you type:");
+    System::Console->WriteLine("Please type \"console\" ". 
+      "(without the quotes). You shouldn't see it as you type:");
     foreach my $k ( qw{ C O N S O L E } ) {
       assert 'Equal' { $k eq chr System::Console->ReadKey(TRUE())->{Key} };
     }
-    AssertUserExpectedResults("\"console\" correctly not echoed as you typed it");
+    AssertUserExpectedResults("\"console\" correctly not echoed as you ". 
+      "typed it");
   }
 
   sub ReadKeyNoIntercept { # void ()
-    System::Console->WriteLine("Please type \"console\" (without the quotes). You should see it as you type:");
+    System::Console->WriteLine("Please type \"console\" ". 
+      "(without the quotes). You should see it as you type:");
     foreach my $k ( qw{ C O N S O L E } ) {
       assert 'Equal' { $k eq chr System::Console->ReadKey(FALSE())->{Key} };
     }
@@ -183,18 +191,19 @@ package ConsoleManualTests {
   }
 
   sub EnterKeyIsEnterAfterKeyAvailableCheck() { # void ()
-    System::Console->WriteLine("Please hold down the 'Enter' key for some time. You shouldn't see new lines appear:");
+    System::Console->WriteLine("Please hold down the 'Enter' key for some ". 
+      "time. You shouldn't see new lines appear:");
     my $keysRead = 0;
     while ($keysRead < 50) {
       if (System::Console->KeyAvailable) {
         my $keyInfo = System::Console->ReadKey(FALSE);
-        assert 'Equal' { ConsoleKey::Enter == $keyInfo->{Key} };
+        assert 'Equal' { ConsoleKey->Enter == $keyInfo->{Key} };
         $keysRead++;
       }
     }
     while (System::Console->KeyAvailable) {
       my $keyInfo = System::Console->ReadKey(TRUE);
-      assert 'Equal' { ConsoleKey::Enter == $keyInfo->{Key} };
+      assert 'Equal' { ConsoleKey->Enter == $keyInfo->{Key} };
     }
     AssertUserExpectedResults("no empty newlines appear");
   }
@@ -211,7 +220,7 @@ package ConsoleManualTests {
   }
 
   sub GetKeyChords { # \@ ()
-    state $MkConsoleKeyInfo = sub { # \% ($requestedKeyChord, $keyChar, $consoleKey, $modifiers)
+    state $MkConsoleKeyInfo = sub {
       my ($requestedKeyChord, $keyChar, $consoleKey, $modifiers) = @_;
       return {
         $requestedKeyChord => {
@@ -223,16 +232,21 @@ package ConsoleManualTests {
     };
 
     my @yield = (
-      $MkConsoleKeyInfo->("Ctrl+B", "\x02", ord('B'), ConsoleModifiers::Control),
-      $MkConsoleKeyInfo->("Ctrl+Alt+B", "\x00", ord('B'), ConsoleModifiers::Control | ConsoleModifiers::Alt),
-      $MkConsoleKeyInfo->("Enter", "\r", ConsoleKey::Enter, 0),
+      $MkConsoleKeyInfo->("Ctrl+B", "\x02", ord('B'), 
+        ConsoleModifiers::Control),
+      $MkConsoleKeyInfo->("Ctrl+Alt+B", "\x00", ord('B'), 
+        ConsoleModifiers::Control | ConsoleModifiers::Alt),
+      $MkConsoleKeyInfo->("Enter", "\r", ConsoleKey->Enter, 0),
     );
 
     if ( $^O eq 'MSWin32' ) {
-      push @yield, $MkConsoleKeyInfo->("Ctrl+J", "\n", ord('J'), ConsoleModifiers::Control);
+      push @yield, $MkConsoleKeyInfo->("Ctrl+J", "\n", ord('J'), 
+        ConsoleModifiers::Control);
     } else {
-      # Ctrl+J is mapped by every Unix Terminal as Ctrl+Enter with new line character
-      push @yield, $MkConsoleKeyInfo->("Ctrl+J", "\n", ConsoleKey::Enter, ConsoleModifiers::Control);
+      # Ctrl+J is mapped by every Unix Terminal as Ctrl+Enter with new line 
+      # character
+      push @yield, $MkConsoleKeyInfo->("Ctrl+J", "\n", ConsoleKey->Enter, 
+        ConsoleModifiers::Control);
     }
 
     return @yield;
@@ -263,7 +277,8 @@ package ConsoleManualTests {
 
   sub Colors { # void ()
     use constant squareSize => 20;
-    my @colors = ( ConsoleColor::Red, ConsoleColor::Green, ConsoleColor::Blue, ConsoleColor::Yellow );
+    my @colors = ( ConsoleColor->Red, ConsoleColor->Green, ConsoleColor->Blue,
+      ConsoleColor->Yellow );
     for (my $row = 0; $row < 2; $row++) {
       for (my $i = 0; $i < int(squareSize / 2); $i++) {
         System::Console->WriteLine();
@@ -284,36 +299,39 @@ package ConsoleManualTests {
   }
 
   sub CursorPositionAndArrowKeys { # void ()
-    System::Console->WriteLine("Use the up, down, left, and right arrow keys to move around.  When done, press enter.");
+    System::Console->WriteLine("Use the up, down, left, and right arrow keys ". 
+      "to move around.  When done, press enter.");
 
     while (TRUE) {
       my $k = System::Console->ReadKey(TRUE);
-      if ( $k->{Key} == ConsoleKey::Enter ) {
+      if ( $k->{Key} == ConsoleKey->Enter ) {
         last;
       }
 
-      my $left = System::Console->CursorLeft; my $top = System::Console->CursorTop;
+      my $left = System::Console->CursorLeft; 
+      my $top = System::Console->CursorTop;
       switch: for ($k->{Key}) {
-        case: $_ == ConsoleKey::UpArrow and do {
+        case: $_ == ConsoleKey->UpArrow and do {
           System::Console->CursorTop( $top - 1 ) if $top > 0;
           last;
         };
-        case: $_ == ConsoleKey::LeftArrow and do {
+        case: $_ == ConsoleKey->LeftArrow and do {
           System::Console->CursorLeft( $left - 1 ) if $left > 0;
           last;
         };
-        case: $_ == ConsoleKey::RightArrow and do {
+        case: $_ == ConsoleKey->RightArrow and do {
           System::Console->CursorLeft( $left + 1 );
           last;
         };
-        case: $_ == ConsoleKey::DownArrow and do {
+        case: $_ == ConsoleKey->DownArrow and do {
           System::Console->CursorTop( $top + 1 );
           last;
         };
       }
     }
 
-    AssertUserExpectedResults("the arrow keys move around the screen as expected with no other bad artifacts");
+    AssertUserExpectedResults("the arrow keys move around the screen as ". 
+      "expected with no other bad artifacts");
   }
 
   sub EncodingTest {
@@ -329,7 +347,8 @@ package ConsoleManualTests {
     System::Console->CursorLeft( 0 );
     System::Console->Write("1");
     System::Console->WriteLine();
-    AssertUserExpectedResults("single line with '1' at the start and '2' at the end.");
+    AssertUserExpectedResults("single line with '1' at the start and '2' at ". 
+      "the end.");
   }
 
   sub ResizeTest { # void ()
@@ -340,11 +359,12 @@ package ConsoleManualTests {
 
     assert 'False' { !$wasResized };
 
-    System::Console->SetWindowSize(int($widthBefore / 2), int($heightBefore / 2));
+    System::Console->SetWindowSize(int($widthBefore / 2), 
+      int($heightBefore / 2));
 
     my $manualResetEvent = eval {
       Time::HiRes::sleep(50/1000);
-      my $hConsoleOutput = Win32::Console::_GetStdHandle(STD_OUTPUT_HANDLE) // -1;
+      my $hConsoleOutput = Win32::Console::_GetStdHandle(STD_OUTPUT_HANDLE)//-1;
       assert { $hConsoleOutput > 0 };
       my $uFileType = Win32API::File::GetFileType($hConsoleOutput) // 0;
       assert { $uFileType == Win32API::File::FILE_TYPE_CHAR };
@@ -391,29 +411,64 @@ use_ok 'ConsoleManualTests';
 SKIP: {
   skip 'Manual test not enabled', 20 unless ManualTestsEnabled();
 
-  lives_ok { ReadLine(FALSE()) } 'ReadLine(FALSE)';
-  lives_ok { ReadLine(TRUE()) } 'ReadLine(TRUE)';
-  lives_ok { ReadLineFromOpenStandardInput() } 'ReadLineFromOpenStandardInput';
-  lives_ok { ReadFromOpenStandardInput() } 'ReadFromOpenStandardInput';
-  lives_ok { ConsoleReadSupportsBackspace() } 'ConsoleReadSupportsBackspace';
-  lives_ok { ReadLine_BackSpaceCanMoveAcrossWrappedLines() } 'ReadLine_BackSpaceCanMoveAcrossWrappedLines';
-  TODO: {
-    local $TODO = "Peek() must be implemented.";
+  lives_ok { ReadLine(FALSE())                } 'ReadLine(FALSE)';
+  lives_ok { ReadLine(TRUE())                 } 'ReadLine(TRUE)';
+  lives_ok { ReadLineFromOpenStandardInput()  } 'ReadLineFromOpenStandardInput';
+  lives_ok { ReadFromOpenStandardInput()      } 'ReadFromOpenStandardInput';
+  lives_ok { ConsoleReadSupportsBackspace()   } 'ConsoleReadSupportsBackspace';
+  lives_ok { ReadLine_BackSpaceCanMoveAcrossWrappedLines() } 
+    'ReadLine_BackSpaceCanMoveAcrossWrappedLines';
+  SKIP: {
+    skip 'Peek() not implemented', 1, unless System::Console->In->can('Peek');
     lives_ok { InPeek() } 'InPeek';
   };
-  lives_ok { Beep() } 'Beep';
-  lives_ok { ReadKey() } 'ReadKey';
-  lives_ok { ReadKeyNoIntercept() } 'ReadKeyNoIntercept';
-  lives_ok { EnterKeyIsEnterAfterKeyAvailableCheck() } 'EnterKeyIsEnterAfterKeyAvailableCheck';
-  lives_ok { ReadKey_KeyChords(each %$_) for GetKeyChords() } 'ReadKey_KeyChords';
-  lives_ok { ConsoleOutWriteLine() } 'ConsoleOutWriteLine';
-  lives_ok { KeyAvailable() } 'KeyAvailable';
-  lives_ok { diag ''; Clear() } 'Clear';
-  lives_ok { diag ''; Colors() } 'Colors';
-  lives_ok { CursorPositionAndArrowKeys() } 'CursorPositionAndArrowKeys';
-  lives_ok { EncodingTest() } 'EncodingTest';
-  lives_ok { CursorLeftFromLastColumn() } 'CursorLeftFromLastColumn';
-  lives_ok { ResizeTest() } 'ResizeTest';
+  lives_ok { Beep()                           } 'Beep';
+  lives_ok { ReadKey()                        } 'ReadKey';
+  lives_ok { ReadKeyNoIntercept()             } 'ReadKeyNoIntercept';
+  lives_ok { EnterKeyIsEnterAfterKeyAvailableCheck() } 
+    'EnterKeyIsEnterAfterKeyAvailableCheck';
+  lives_ok { ReadKey_KeyChords(each %$_) for GetKeyChords() } 
+    'ReadKey_KeyChords';
+  lives_ok { ConsoleOutWriteLine()            } 'ConsoleOutWriteLine';
+  lives_ok { KeyAvailable()                   } 'KeyAvailable';
+  lives_ok { diag ''; Clear()                 } 'Clear';
+  lives_ok { diag ''; Colors()                } 'Colors';
+  lives_ok { CursorPositionAndArrowKeys()     } 'CursorPositionAndArrowKeys';
+  lives_ok { EncodingTest()                   } 'EncodingTest';
+  lives_ok { CursorLeftFromLastColumn()       } 'CursorLeftFromLastColumn';
+  lives_ok { ResizeTest()                     } 'ResizeTest';
 };
 
 done_testing;
+
+__END__
+
+=pod
+
+=head1 System->Console manual tests
+
+For verifying console functionality that cannot be run as fully automated. To 
+run the suite, follow these steps:
+
+=over
+
+=item 1. Install the nesessary test libraries.
+
+=item 2. Using a terminal, navigate to the current folder.
+
+=item 3. Enable manual testing by defining the C<MANUAL_TESTS> environment 
+variable (e.g. on cmd C<set MANUAL_TESTS=1>).
+
+=item 4. Deactivate all standard environment variables for automated tests such 
+as C<AUTOMATED_TESTING> or C<NONINTERACTIVE_TESTING> (e.g. with cmd 
+C<set AUTOMATED_TESTING=>).
+
+=item 5. Run C<prove> and follow the instructions in the command prompt.
+
+=head2 Instructions for Windows testers
+
+Test on Windows prints to console output, so in order to properly execute the 
+manual tests, C<prove> must be invoked with argument C<-q> or C<-Q>. To do this 
+run
+
+  prove -l -q xt\*tests.t

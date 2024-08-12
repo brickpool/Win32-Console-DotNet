@@ -58,16 +58,15 @@ __END__
 
 =pod
 
-=begin comment
+If the example is compiled and run with the following command line:
 
-This example produces the following results:
+  perl ViewTextFile.pl file1.txt file2.txt
 
-+---+
-|   |
-|   |
-|   |
-+---+
+and neither file1.txt nor file2.txt exist, it displays the following output:
 
-All done!
+  Error information written to ViewTextFile.Err.txt
 
-=end comment
+and writes the following text to ViewTextFile.Err.txt:
+  
+  'file1.txt' does not exist.
+  'file2.txt' does not exist.

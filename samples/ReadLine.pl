@@ -27,11 +27,8 @@ __END__
 
 =pod
 
-=begin comment
-
 The example displays output like the following:
+
     Today is 10/26/2015 at 12:22:22 PM.
 
     Press Enter key to continue...
-
-=end comment

@@ -69,16 +69,13 @@ __END__
 
 =pod
 
-=begin comment
-
 This example produces the following results:
 
-+---+
-|   |
-|   |
-|   |
-+---+
+  +---+
+  |   |
+  |   |
+  |   |
+  +---+
 
-All done!
+  All done!
 
-=end comment

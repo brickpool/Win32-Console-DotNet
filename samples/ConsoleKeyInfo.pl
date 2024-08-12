@@ -1,3 +1,4 @@
+# https://learn.microsoft.com/en-us/dotnet/api/system.console.treatcontrolcasinput?view=net-8.0
 # https://learn.microsoft.com/en-us/dotnet/api/system.consolekeyinfo?view=net-9.0
 # https://learn.microsoft.com/en-us/dotnet/api/system.console.readkey?view=net-8.0
 # The following example uses the ReadKey() method to display information about 
@@ -36,20 +37,17 @@ __END__
 
 =pod
 
-=begin comment
-
 This example displays output similar to the following:
-    Press any combination of CTL, ALT, and SHIFT, and a console key.
-    Press the Escape (Esc) key to quit:
 
-    a --- You pressed A
-    k --- You pressed ALT+K
-    ► --- You pressed CTL+P
-      --- You pressed RightArrow
-    R --- You pressed SHIFT+R
-              --- You pressed CTL+I
-    j --- You pressed ALT+J
-    O --- You pressed SHIFT+O
-    § --- You pressed CTL+U
+  Press any combination of CTL, ALT, and SHIFT, and a console key.
+  Press the Escape (Esc) key to quit:
 
-=end comment
+  a --- You pressed A
+  k --- You pressed ALT+K
+  ► --- You pressed CTL+P
+    --- You pressed RightArrow
+  R --- You pressed SHIFT+R
+            --- You pressed CTL+I
+  j --- You pressed ALT+J
+  O --- You pressed SHIFT+O
+  § --- You pressed CTL+U

@@ -23,19 +23,19 @@ require_ok 'ConsoleKeyInfo';
 note 'Constructors';
 #-------------------
 
-my $cki1 = ConsoleKeyInfo->new({ Key => 1, KeyChar => "\2", Modifiers => 3 });
-my $cki2 = ConsoleKeyInfo->new(1, "\2", !!1, !!1, !!0);
+my $cki1 = ConsoleKeyInfo->new({ KeyChar => "\1", Key => 2, Modifiers => 3 });
+my $cki2 = ConsoleKeyInfo->new("\1", 2, !!1, !!1, !!0);
 
 isa_ok $cki1, 'ConsoleKeyInfo';
 isa_ok $cki2, 'ConsoleKeyInfo';
-dies_ok { ConsoleKeyInfo->new() // die } 'Invalid Argument';
+dies_ok { ConsoleKeyInfo->new('A') // die } 'Invalid Argument';
 
 #----------------
 note 'Properties';
 #----------------
 
-is $cki1->Key(), 1, 'ConsoleKeyInfo->Key';
-is $cki1->KeyChar(), "\2", 'ConsoleKeyInfo->KeyChar';
+is $cki1->KeyChar(), "\1", 'ConsoleKeyInfo->KeyChar';
+is $cki1->Key(), 2, 'ConsoleKeyInfo->Key';
 is $cki1->Modifiers(), 3, 'ConsoleKeyInfo->Modifiers';
 dies_ok { $cki1->Key(2) // die } 'Invalid Set';
 

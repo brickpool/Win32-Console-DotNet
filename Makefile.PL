@@ -20,7 +20,7 @@ WriteMakefile(
 
   PREREQ_PM => {
     'Class::Method::Modifiers'  => 2.11,
-    'Class::Tiny'               => 1.000,
+    'Class::Tiny'               => "1.000",
     'Class::Tiny::Antlers'      => 0.024,
     'Devel::StrictMode'         => 0.003,
     'IO::Null'                  => 1.01,
@@ -29,7 +29,7 @@ WriteMakefile(
     'Type::Nano'                => 0.014,
     'Win32'                     => 0.54,
     'Win32::API'                => 0.79,
-    'Win32::Console'            => 0.10,
+    'Win32::Console'            => "0.10",
     'Win32API::File'            => 0.1201,
   },
 
@@ -56,33 +56,35 @@ WriteMakefile(
     prereqs => {
       runtime => {
         requires => { # v5.14 builtin modules
-          'constant'        => 0,
-          'English'         => 0,
-          'Exporter'        => 0,
-          'IO::File'        => 0,
-          'IO::Handle'      => 0,
-          'List::Util'      => 0,
-          'strict'          => 0,
-          'Symbol'          => 0,
-          'threads'         => 0,
-          'threads::shared' => 0,
-          'warnings'        => 0,
+          'Config'            => 0,
+          'constant'          => 0,
+          'Encode'            => 0,
+          'English'           => 0,
+          'Exporter'          => 0,
+          'IO::File'          => 0,
+          'IO::Handle'        => 0,
+          'List::Util'        => 0,
+          'strict'            => 0,
+          'Symbol'            => 0,
+          'threads'           => 0,
+          'threads::shared'   => 0,
+          'warnings'          => 0,
         },
         recommends => {
-          'autodie'         => 0,
-          'bytes'           => 0,
-          'DateTime'        => 0,
-          'Time::HiRes'     => 0,
-          'Type::Tiny'      => 0,
+          'autodie'       => 0,
+          'bytes'         => 0,
+          'DateTime'      => 0,
+          'Time::HiRes'   => 0,
+          'Type::Tiny'    => 0,
         },
       },
       test => {
         requires => { # v5.14 builtin modules
-          'Class::Struct'   => 0,
-          'FindBin'         => 0,
-          'POSIX'           => 0,
-          'Scalar::Util'    => 0,
-          'Time::HiRes'     => 0,
+          'Class::Struct'     => 0,
+          'FindBin'           => 0,
+          'POSIX'             => 0,
+          'Scalar::Util'      => 0,
+          'Time::HiRes'       => 0,
         },
       },
     },
@@ -91,7 +93,8 @@ WriteMakefile(
   dist  => {
     TARFLAGS => '-cvzf',
     COMPRESS => 'perl -MExtUtils::Command -e test_f',
-    POSTOP   => 'perl -MExtUtils::Command -e mv $(DISTVNAME).tar $(DISTVNAME).tar$(SUFFIX)'
+    POSTOP   => 'perl -MExtUtils::Command -e mv $(DISTVNAME).tar ' . 
+      '$(DISTVNAME).tar$(SUFFIX)'
   },
   clean => {
     FILES => 'Win32-Console-*',

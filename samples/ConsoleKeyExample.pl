@@ -62,27 +62,25 @@ __END__
 
 =pod
 
-=begin comment
-
 The output from a sample console session might appear as follows:
-    Press a key, together with Alt, Ctrl, or Shift.
-    Press Esc to exit.
-    You pressed D.
 
-    Press a key, together with Alt, Ctrl, or Shift.
-    Press Esc to exit.
-    You pressed X, together with Shift.
+  Press a key, together with Alt, Ctrl, or Shift.
+  Press Esc to exit.
+  You pressed D.
 
-    Press a key, together with Alt, Ctrl, or Shift.
-    Press Esc to exit.
-    You pressed L, together with Control and Shift.
+  Press a key, together with Alt, Ctrl, or Shift.
+  Press Esc to exit.
+  You pressed X, together with Shift.
 
-    Press a key, together with Alt, Ctrl, or Shift.
-    Press Esc to exit.
-    You pressed P, together with Alt and Control and Shift.
+  Press a key, together with Alt, Ctrl, or Shift.
+  Press Esc to exit.
+  You pressed L, together with Control and Shift.
 
-    Press a key, together with Alt, Ctrl, or Shift.
-    Press Esc to exit.
-    You pressed Escape.
+  Press a key, together with Alt, Ctrl, or Shift.
+  Press Esc to exit.
+  You pressed P, together with Alt and Control and Shift.
 
-=end comment
+  Press a key, together with Alt, Ctrl, or Shift.
+  Press Esc to exit.
+  You pressed Escape.
+

@@ -17,7 +17,7 @@ sub main {
   Console->WriteLine("The time zone: %s\n", 
     $tz->is_dst_for_datetime($dat) 
       ? sprintf('%s (%s)', $tz->name(), $tz->short_name_for_datetime($dat)) 
-      : $tz->name
+                  : $tz->name
   );
   Console->Write("Press <Enter> to exit... ");
   while ( Console->ReadKey()->{Key} != ConsoleKey->Enter ) {}
@@ -30,10 +30,7 @@ __END__
 
 =pod
 
-=begin comment
-
 The example displays output like the following:
-    The time: 11/11/2015 at 4:02 PM:
-    The time zone: Pacific Standard Time
 
-=end comment
+  The time: 11/11/2015 at 4:02 PM:
+  The time zone: Pacific Standard Time
