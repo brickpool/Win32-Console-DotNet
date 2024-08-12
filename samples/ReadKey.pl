@@ -5,18 +5,18 @@
 use 5.014;
 use warnings;
 use DateTime;
+use Time::Piece;
 
 use lib '../lib', 'lib';
 use Win32::Console::DotNet;
 use System;
 
 sub main {
-  my $dat = DateTime->now(time_zone => 'local');
-  Console->WriteLine("The time: %s at %s", $dat->dmy('/'), $dat->hms);
+  my $dat = localtime;
+  Console->WriteLine("The time: %s at %s", $dat->dmy, $dat->hms);
   my $tz = DateTime::TimeZone->new(name => 'local');
   Console->WriteLine("The time zone: %s\n", 
-    $tz->is_dst_for_datetime($dat) 
-      ? sprintf('%s (%s)', $tz->name(), $tz->short_name_for_datetime($dat)) 
+    $dat->isdst() ? $tz->name() . $dat->strftime(" (%Z)")
                   : $tz->name
   );
   Console->Write("Press <Enter> to exit... ");

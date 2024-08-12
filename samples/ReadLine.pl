@@ -3,7 +3,7 @@
 
 use 5.014;
 use warnings;
-use DateTime;
+use Time::Piece;
 
 use lib '../lib', 'lib';
 use Win32::Console::DotNet;
@@ -13,9 +13,9 @@ sub main {
   #
   Console->Clear();
 
-  my $dat = DateTime->now(time_zone => 'local');
+  my $dat = localtime;
 
-  Console->Write("\nToday is %s at %s.", $dat->dmy('/'), $dat->hms);
+  Console->Write("\nToday is %s at %s.", $dat->mdy, $dat->hms);
   Console->Write("\nPress Enter key to continue... ");
   Console->ReadLine();
   return 0;
