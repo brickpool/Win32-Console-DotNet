@@ -31,7 +31,7 @@ use namespace::sweep;
 
 # version '...'
 our $version = 'v4.6.0';
-our $VERSION = '0.004002';
+our $VERSION = '0.004003';
 $VERSION = eval $VERSION;
 
 # authority '...'
@@ -3540,7 +3540,7 @@ I<return> an hash reference with informations about the console.
 
     assert { @_ == 0 || @_ == 2 };
     my $throwOnNoConsole = @_ ? assert_Bool(shift) : TRUE;
-    my $succeeded = @_ ? do { assert { ref($_[0]) && is_Bool($$_[0]) }; shift }
+    my $succeeded = @_ ? do { assert_Bool(${$_[0]}); shift }
                        : do { my $junk; \$junk };
 
     $$succeeded = FALSE;
