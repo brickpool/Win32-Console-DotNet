@@ -4,27 +4,18 @@
 use 5.014;
 use warnings;
 
-use Test::More;
+use Test::More tests => 16;
 use Test::Exception;
 
 use Config;
 use constant CAPTURE_TINY => eval { require Capture::Tiny };
 use if CAPTURE_TINY, 'Capture::Tiny', qw( capture_stdout );
-use Encode;
+use Encode ();
 use Encode::Alias ();
-require Encode::Encoding;
 use English qw( -no_match_vars );
 use List::Util qw( first );
+use Perl::OSType qw( os_type );
 use POSIX;
-
-BEGIN {
-  unless ( $^O eq 'MSWin32' ) {
-    plan skip_all => 'This is not MSWin32';
-  }
-  else {
-    plan tests => 18;
-  }
-}
 
 BEGIN {
   use_ok 'Win32::Console::DotNet';
@@ -215,67 +206,61 @@ subtest 'OutWriteAndWriteLineOverloads' => sub {
   Console->SetOut($savedStandardOutput);
 };
 
-SKIP: { 
-  skip 'Platform specific', 1 if $^O eq 'MSWin32';
-  subtest 'TestConsoleWrite' => sub {
-    plan tests => 2;
-    my $savedStandardOutput = Console->Out;
-    lives_ok {
-      use autodie;
-      my $s = '';
-      open(my $w, '+>', \$s);
-      $w->autoflush(TRUE);
-      Console->SetOut($w);
+SKIP: { skip 'Platform specific', 1 unless os_type eq 'iphoneos';
+subtest 'TestConsoleWrite' => sub {
+  plan tests => 2;
+  my $savedStandardOutput = Console->Out;
+  lives_ok {
+    use autodie;
+    my $s = '';
+    open(my $w, '+>', \$s);
+    $w->autoflush(TRUE);
+    Console->SetOut($w);
 
-      Console->Write("A");
-      Console->Write("B");
-      Console->Write("C");
+    Console->Write("A");
+    Console->Write("B");
+    Console->Write("C");
 
-      open(my $r, '<&', $w);
-      seek($r, 0, 0);
-      read($r, my $line, 3);
-      is $line, "ABC", 'Equal';
-    };
-    Console->SetOut($savedStandardOutput);
+    open(my $r, '<&', $w);
+    seek($r, 0, 0);
+    read($r, my $line, 3);
+    is $line, "ABC", 'Equal';
   };
-}
+  Console->SetOut($savedStandardOutput);
+}}
 
 #---------------
 note 'Encoding';
 #---------------
-
-# Mock Encode::Encoding class
-sub Encode::Encoding::_find_aliases { # @names ($self, $regex)
-  ref($_[0]) && ref($_[1]) or return ();
-  return grep { 
-    /$_[1]/ and $Encode::Alias::Alias{$_} eq $_[0];
-  } keys %Encode::Alias::Alias;
-}
-
-sub Encode::Encoding::CodePage { # $cpi ($self)
-  ref($_[0]) or return 0;
-  my $regex = qr/^cp(\d+)$/;
-  $_ = first { /$regex/ } ( $_[0]->name, $_[0]->_find_aliases($regex) );
-  $_ //= '';
-  return /$regex/ ? 0+ $1 : 0;
-}
-
-# When BE or LE is omitted during encode(), it returns a BE-encoded string with 
-# BOM prepended: https://perldoc.perl.org/Encode::Unicode
-sub Encode::Encoding::GetPreamble { # $octets ($self)
-  return ref($_[0]) ? $_[0]->encode('') : undef;
-}
 
 # Create singelton Encode::Encoding objects
 sub Encoding::Unicode {
   # Use alias from Win32::Console::DotNet
   state $instance = Encode::find_encoding('cp120'. ($Config{byteorder} & 0b1));
 }
-
 sub Encoding::UTF8 {
   # Use already existing alias from Perl
   state $instance = Encode::find_encoding('cp65001');
 }
+
+# Gets the code page identifier of the current Encoding.
+my $CodePage = sub {
+  my $self = shift;
+  return if @_ || !ref($self) || !$self->isa('Encode::Encoding');
+
+  my $regex = qr/^cp(\d+)$/;
+  my @aliases = grep { 
+    /$regex/ && $Encode::Alias::Alias{$_} eq $self;
+  } keys(%Encode::Alias::Alias);
+  my $element = first { /$regex/ } ( $self->name, @aliases );
+  return $element && $element =~ $regex ? 0+ $1 : 0;
+};
+
+# When BE or LE is omitted during encode(), it returns a BE-encoded string with 
+# BOM prepended: https://perldoc.perl.org/Encode::Unicode
+my $GetPreamble = sub { # $octets ($self)
+  return ref($_[0]) ? $_[0]->encode('') : undef;
+};
 
 # Method Encoding() for IO::File objects
 my $Encoding = sub { # $cpi ($fh)
@@ -298,7 +283,7 @@ sub ValidateConsoleEncoding {
 
     like $encoding->name, qr/\S/, 'False';
     like $encoding->mime_name, qr/\S/, 'False';
-    cmp_ok $encoding->CodePage, '>=', 0, 'True';
+    cmp_ok $encoding->$CodePage, '>=', 0, 'True';
 
     # And we can validate that the encoding is self-consistent by roundtripping
     # data between chars and octets.
@@ -318,12 +303,12 @@ subtest 'OutputEncodingPreamble' => sub {
   lives_ok {
     my $encoding = Console->Out->$Encoding;
     # The primary purpose of ConsoleEncoding is to return an empty preamble.
-    is $encoding->GetPreamble(), '', 'Equal';
+    is $encoding->$GetPreamble(), '', 'Equal';
 
     # Try setting the ConsoleEncoding to something else and see if it works.
-    Console->OutputEncoding(Encoding::Unicode->CodePage);
+    Console->OutputEncoding(Encoding::Unicode);
     # The primary purpose of ConsoleEncoding is to return an empty preamble.
-    is Console->Out->$Encoding->GetPreamble(), '', 'Equal';
+    is Console->Out->$Encoding->$GetPreamble(), '', 'Equal';
   };
   Console->OutputEncoding($curEncoding);
 };
@@ -337,36 +322,20 @@ subtest 'OutputEncoding' => sub {
 
     my $encoding = Console->Out->$Encoding;
     ok $encoding, 'NotNull';
-    is Console->OutputEncoding, Console->Out->$Encoding->CodePage, 'Equal';
+    is Console->OutputEncoding->name, Console->Out->$Encoding->name, 'Equal';
     ValidateConsoleEncoding($encoding);
 
     # Try setting the ConsoleEncoding to something else and see if it works.
-    Console->OutputEncoding(Encoding::Unicode->CodePage);
-    is Console->OutputEncoding, Encoding::Unicode->CodePage, 'Equal';
+    Console->OutputEncoding(Encoding::Unicode);
+    is Console->OutputEncoding->$CodePage, Encoding::Unicode->$CodePage, 
+      'Equal';
     ValidateConsoleEncoding(Console->Out->$Encoding);
   };
   Console->OutputEncoding($curEncoding);
 };
 
-SKIP: { 
-  skip 'Platform specific', 1 if $^O eq 'MSWin32';
-  subtest 'OutputEncoding_Getter_Returns_Unicode' => sub {
-    plan tests => 1;
-    my $curEncoding = Console->OutputEncoding;
-    is $curEncoding, Encoding::UTF8->CodePage, 'Equal';
-  };
-}
-
-SKIP: { 
-  skip 'Platform specific', 1 if $^O eq 'MSWin32';
-  subtest 'InputEncoding_Getter_Throws_PlatformNotSupportedException' => sub {
-    plan tests => 1;
-    throws_ok { Console->InputEncoding } qr/NotSupported/, 'Throws';
-  };
-}
-
 my @s_testLines = (
-  "3232 Hello32 Hello 5032 Hello 50 532 Hello 50 5 aTrueaabcdbc1.23123.4561." . 
+  "3232 Hello32 Hello 5032 Hello 50 532 Hello 50 5 aTrueaabcdbc1.23123.4561.". 
     "23439505050System.ObjectHello World",
   "32",
   "",
@@ -455,7 +424,6 @@ subtest 'OpenStandardError' .
   plan tests => 1;
   throws_ok { Console->OpenStandardError(-1) } qr/bufferSize/, 'Throws';
 };
-
 
 subtest 'FlushOnStreams_Nop' => sub {
   plan tests => 3;
