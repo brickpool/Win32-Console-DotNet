@@ -31,7 +31,7 @@ use namespace::sweep;
 
 # version '...'
 our $version = 'v4.6.0';
-our $VERSION = '0.004003';
+our $VERSION = '0.004004';
 $VERSION = eval $VERSION;
 
 # authority '...'
@@ -1812,22 +1812,41 @@ I<throws> Exception if in a set operation, the specified title is not a string.
     my $self = assert_Object shift;
     goto SET if @_;
     GET: {
-      my $title = Win32::Console::_GetConsoleTitle()
-        or confess("WinIOError:\n$EXTENDED_OS_ERROR\n");
-      $self->$orig($title);
-      if ( length($title) > MaxConsoleTitleLength ) {
+      my $title;
+      my $titleLength = 0xffff;
+      my $r = do { # GetTitleNative
+        Win32::SetLastError(0);
+        $title = Win32::Console::_GetConsoleTitle();
+        $titleLength = length($title);
+        # Win32::Console::_GetConsoleTitle() only supports 1024 characters
+        $title = substr($title, 0, 1024) if $titleLength > 1024;
+        Win32::GetLastError() == 0;
+      };
+  
+      if ( !$r ) {
+        confess("WinIOError:\n$EXTENDED_OS_ERROR\n")
+      }
+  
+      if ( $titleLength > MaxConsoleTitleLength ) {
         confess("InvalidOperationException:\n".
           "$ResourceString{ArgumentOutOfRange_ConsoleTitleTooLong}\n");
       }
+
+      $self->$orig($title);
       return $title;
     }
     SET: {
       my $value = shift;
+      if ( !defined $value ) {
+        confess("ArgumentNullException:\n". 
+          sprintf("$ResourceString{ArgumentNullException}\n", "value"));
+      }
       $self->$orig($value);
       if ( length($value) > MaxConsoleTitleLength ) {
-        confess("InvalidOperationException:\n".
+        confess("ArgumentOutOfRangeException:\n".
           "$ResourceString{ArgumentOutOfRange_ConsoleTitleTooLong}\n");
       }
+
       Win32::Console::_SetConsoleTitle($value)
         or confess("WinIOError:\n$EXTENDED_OS_ERROR\n");
       return;
@@ -2437,7 +2456,8 @@ $sourceHeight is zero.
     $readRegion->{Bottom} = $sourceTop + $sourceHeight - 1;
 
     my $r;
-    $r = Win32::Console::_ReadConsoleOutput(ConsoleOutputHandle(), $data,
+    $r = defined Win32::Console::_ReadConsoleOutput(ConsoleOutputHandle(), 
+      $data,
       $bufferSize->{X}, $bufferSize->{Y}, 
       $bufferCoord->{X}, $bufferCoord->{Y}, 
       $readRegion->{Left}, $readRegion->{Top}, 
