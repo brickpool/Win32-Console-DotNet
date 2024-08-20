@@ -6,7 +6,11 @@ use warnings;
 
 use Test::More;
 use Test::Exception;
+
 use Config;
+use Encode ();
+use Encode::Alias ();
+use List::Util qw( first );
 
 BEGIN {
   unless ( $^O eq 'MSWin32' ) {
@@ -24,32 +28,55 @@ BEGIN {
   use_ok 'System';
 }
 
-sub Encoding::Latin1::CodePage  (){ 28591 }
-sub Encoding::ASCII::CodePage   (){ 20127 }
-sub Encoding::Unicode::CodePage (){ $Config{byteorder} =~ /1234/ ? 1200 : 1201 }
+# Create singelton Encode::Encoding objects
+sub Encoding::Latin1 {
+  # Use already existing alias from Perl
+  state $instance = Encode::find_encoding('cp28591');
+}
+sub Encoding::ASCII {
+  # Use alias from Win32::Console::DotNet
+  state $instance = Encode::find_encoding('cp20127');
+}
+sub Encoding::Unicode {
+  # Use alias from Win32::Console::DotNet
+  state $instance = Encode::find_encoding('cp120'. ($Config{byteorder} & 0b1));
+}
 
 sub OnLeaveScope::DESTROY { ${$_[0]}->() }
+
+# Gets the code page identifier of the current Encoding.
+my $CodePage = sub {
+  my $self = shift;
+  return if @_ || !ref($self) || !$self->isa('Encode::Encoding');
+
+  my $regex = qr/^cp(\d+)$/;
+  my @aliases = grep { 
+    /$regex/ && $Encode::Alias::Alias{$_} eq $self;
+  } keys(%Encode::Alias::Alias);
+  my $element = first { /$regex/ } ( $self->name, @aliases );
+  return $element && $element =~ $regex ? 0+ $1 : 0;
+};
 
 subtest 'InputEncoding_SetDefaultEncoding_Success' => sub {
   plan tests => 3;
   lives_ok {
-    my $encoding = Win32::GetConsoleCP();
+    my $encoding = Encode::find_encoding('cp'. Win32::GetConsoleCP());
     Console->InputEncoding($encoding);
-    is Console->InputEncoding, $encoding;
-    is Win32::GetConsoleCP(), $encoding;
+    is Console->InputEncoding->name, $encoding->name, 'Equal';
+    is Win32::GetConsoleCP(), $encoding->$CodePage, 'Equal';
   };
 };
 
 subtest 'InputEncoding_SetUnicodeEncoding_SilentlyIgnoredInternally' => sub {
   plan tests => 4;
   lives_ok {
-    my $unicodeEncoding = Encoding::Unicode->CodePage;
+    my $unicodeEncoding = Encoding::Unicode;
     my $oldEncoding = Console->InputEncoding;
-    isnt $oldEncoding, $unicodeEncoding;
+    isnt $oldEncoding->name, $unicodeEncoding->name, 'NotEqual';
 
     Console->InputEncoding($unicodeEncoding);
-    is Console->InputEncoding, $unicodeEncoding;
-    is Win32::GetConsoleCP(), $oldEncoding;
+    is Console->InputEncoding->name, $unicodeEncoding->name, 'Equal';
+    is Win32::GetConsoleCP(), $oldEncoding->$CodePage, 'Equal';
   };
 };
 
@@ -62,9 +89,9 @@ subtest 'InputEncoding_SetEncodingWhenDetached_ErrorIsSilentlyIgnored' => sub {
       Win32::Console::Alloc();
       Win32::SetConsoleCP($oldEncoding);
     }, 'OnLeaveScope';
-    my $encoding = Console->InputEncoding != Encoding::ASCII->CodePage
-                  ? Encoding::ASCII->CodePage
-                  : Encoding::Latin1->CodePage;
+    my $encoding = Console->InputEncoding->$CodePage != Encoding::ASCII->$CodePage
+                 ? Encoding::ASCII
+                 : Encoding::Latin1;
     
     # use FreeConsole to detach the current console - simulating a process 
     # started with the "DETACHED_PROCESS" flag
@@ -74,9 +101,9 @@ subtest 'InputEncoding_SetEncodingWhenDetached_ErrorIsSilentlyIgnored' => sub {
     Console->InputEncoding($encoding);
     # The internal state of Console should have updated, despite the failure 
     # to change the console's input encoding
-    is Console->InputEncoding, $encoding;
+    is Console->InputEncoding->name, $encoding->name, 'Equal';
     # Operations on the console are no longer valid - GetConsoleCP fails.
-    is Win32::GetConsoleCP(), 0;
+    is Win32::GetConsoleCP(), 0, 'Equal';
   };
   is Win32::GetConsoleCP(), $oldEncoding;
 };
@@ -84,23 +111,23 @@ subtest 'InputEncoding_SetEncodingWhenDetached_ErrorIsSilentlyIgnored' => sub {
 subtest 'OutputEncoding_SetDefaultEncoding_Success' => sub {
   plan tests => 3;
   lives_ok {
-    my $encoding = Win32::GetConsoleOutputCP();
+    my $encoding = Encode::find_encoding('cp'. Win32::GetConsoleOutputCP());
     Console->OutputEncoding($encoding);
-    is Console->OutputEncoding, $encoding;
-    is Win32::GetConsoleOutputCP(), $encoding;
+    is Console->OutputEncoding->name, $encoding->name, 'Equal';
+    is Win32::GetConsoleOutputCP(), $encoding->$CodePage, 'Equal';
   };
 };
 
 subtest 'OutputEncoding_SetUnicodeEncoding_SilentlyIgnoredInternally' => sub {
   plan tests => 4;
   lives_ok {
-    my $unicodeEncoding = Encoding::Unicode->CodePage;
+    my $unicodeEncoding = Encoding::Unicode;
     my $oldEncoding = Console->OutputEncoding;
-    isnt $oldEncoding, $unicodeEncoding;
-
+    isnt $oldEncoding->name, $unicodeEncoding->name, 'NotEqual';
     Console->OutputEncoding($unicodeEncoding);
-    is Console->OutputEncoding, $unicodeEncoding;
-    is Win32::GetConsoleOutputCP(), $oldEncoding;
+    is Console->OutputEncoding->name, $unicodeEncoding->name, 'Equal';
+
+    is Win32::GetConsoleOutputCP(), $oldEncoding->$CodePage, 'Equal';
   };
 };
 
@@ -113,9 +140,10 @@ subtest 'OutputEncoding_SetEncodingWhenDetached_ErrorIsSilentlyIgnored' => sub {
       Win32::Console::Alloc();
       Win32::SetConsoleOutputCP($oldEncoding);
     }, 'OnLeaveScope';
-    my $encoding = Console->OutputEncoding != Encoding::ASCII->CodePage
-                  ? Encoding::ASCII->CodePage
-                  : Encoding::Latin1->CodePage;
+    my $encoding = Console->OutputEncoding->$CodePage 
+      != Encoding::ASCII->$CodePage
+                 ? Encoding::ASCII
+                 : Encoding::Latin1;
     
     # use FreeConsole to detach the current console - simulating a process 
     # started with the "DETACHED_PROCESS" flag
@@ -125,9 +153,9 @@ subtest 'OutputEncoding_SetEncodingWhenDetached_ErrorIsSilentlyIgnored' => sub {
     Console->OutputEncoding($encoding);
     # The internal state of Console should have updated, despite the failure 
     # to change the console's output encoding
-    is Console->OutputEncoding, $encoding;
+    is Console->OutputEncoding->name, $encoding->name, 'Equal';
     # Operations on the console are no longer valid - GetConsoleOutputCP fails.
-    is Win32::GetConsoleOutputCP(), 0;
+    is Win32::GetConsoleOutputCP(), 0, 'Equal';
   };
   is Win32::GetConsoleOutputCP(), $oldEncoding;
 };
