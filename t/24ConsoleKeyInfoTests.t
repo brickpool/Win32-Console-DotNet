@@ -4,17 +4,8 @@
 use 5.014;
 use warnings;
 
-use Test::More;
+use Test::More tests => 30;
 use Test::Exception;
-
-BEGIN {
-  unless ( $^O eq 'MSWin32' ) {
-    plan skip_all => 'This is not MSWin32';
-  }
-  else {
-    plan tests => 30;
-  }
-}
 
 use constant FALSE  => !!'';
 use constant TRUE   => !!1;
