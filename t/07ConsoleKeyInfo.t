@@ -1,23 +1,13 @@
 use 5.014;
 use warnings;
 
-use Test::More;
+use Test::More tests => 14;
 use Test::Exception;
 
 BEGIN {
-  unless ( $^O eq 'MSWin32' ) {
-    plan skip_all => 'This is not MSWin32';
-  }
-  else {
-    plan tests => 14;
-  }
-}
-
-BEGIN {
   use_ok 'Win32::Console::DotNet';
+  use_ok 'ConsoleKeyInfo';
 }
-
-require_ok 'ConsoleKeyInfo';
 
 #-------------------
 note 'Constructors';

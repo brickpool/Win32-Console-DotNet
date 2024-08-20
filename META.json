@@ -10,7 +10,7 @@
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
-      "version" : 2
+      "version" : "2"
    },
    "name" : "Win32-Console-DotNet",
    "no_index" : {
@@ -40,7 +40,13 @@
             "Class::Method::Modifiers" : "2.11",
             "Class::Tiny" : "1.000",
             "Class::Tiny::Antlers" : "0.024",
+            "Config" : "0",
             "Devel::StrictMode" : "0.003",
+            "Encode" : "0",
+            "Encode::Alias" : "0",
+            "Encode::Byte" : "0",
+            "Encode::Encoding" : "0",
+            "Encode::Unicode" : "0",
             "English" : "0",
             "Exporter" : "0",
             "IO::File" : "0",
@@ -69,7 +75,9 @@
             "POSIX" : "0",
             "Scalar::Util" : "0",
             "Test::Exception" : "0.43",
-            "Test::More" : "1.001006"
+            "Test::Simple" : "1.302188",
+            "Time::HiRes" : "0",
+            "autodie" : "0"
          }
       }
    },
@@ -84,7 +92,7 @@
          "web" : "https://github.com/brickpool/Win32-Console-DotNet"
       }
    },
-   "version" : "0.003_000",
+   "version" : "0.005000",
    "x_homepage" : "http://brickpool.de",
-   "x_serialization_backend" : "JSON::PP version 4.05"
+   "x_serialization_backend" : "JSON::PP version 2.27300"
 }

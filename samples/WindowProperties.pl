@@ -75,7 +75,7 @@ sub main {
     Console->SetWindowPosition(0, 0);
     do {
       $cki = Console->ReadKey(TRUE);
-      switch: for ( $cki->{Key} ) {
+      switch: for ( $cki->Key ) {
         case: $_ == ConsoleKey->LeftArrow and do {
           if ( Console->WindowLeft > 0 ) {
             Console->SetWindowPosition(
@@ -109,7 +109,7 @@ sub main {
           last;
         };
       }
-    } while ( $cki->{Key} != ConsoleKey->Escape ); # end do-while
+    } while ( $cki->Key != ConsoleKey->Escape ); # end do-while
 
   }; # end try
   catch: if ( $@ ) {

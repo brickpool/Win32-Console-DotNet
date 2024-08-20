@@ -25,8 +25,8 @@ sub main {
 
     $cki = Console->ReadKey(1);
     Console->WriteLine("You pressed the '%s' key.", 
-      ConsoleKey->get($cki->{Key}));
-  } while($cki->{Key} != ConsoleKey->X);
+      ConsoleKey->get($cki->Key));
+  } while($cki->Key != ConsoleKey->X);
   return 0;
 }
 

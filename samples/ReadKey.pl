@@ -20,7 +20,7 @@ sub main {
                   : $tz->name
   );
   Console->Write("Press <Enter> to exit... ");
-  while ( Console->ReadKey()->{Key} != ConsoleKey->Enter ) {}
+  while ( Console->ReadKey(1)->Key != ConsoleKey->Enter ) {}
   return 0;
 }
 

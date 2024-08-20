@@ -202,8 +202,10 @@ lives_ok(
 
 subtest 'ResetColor' => sub {
   plan tests => 5;
-  lives_ok { System::Console->ForegroundColor($FG_YELLOW) } 'Console->ForegroundColor(14)';
-  lives_ok { System::Console->BackgroundColor($BG_BLUE >> 4) } 'Console->BackgroundColor(1)';
+  lives_ok { System::Console->ForegroundColor($FG_YELLOW) } 
+    'Console->ForegroundColor(14)';
+  lives_ok { System::Console->BackgroundColor($BG_BLUE >> 4) } 
+    'Console->BackgroundColor(1)';
   lives_ok { System::Console->ResetColor() } 'Console->ResetColor';
   is System::Console->ForegroundColor, $fg, 'Console->ForegroundColor';
   is System::Console->BackgroundColor, $bg, 'Console->BackgroundColor';
@@ -213,7 +215,8 @@ subtest 'SetBufferSize' => sub {
   plan tests => 3;
   my $height = System::Console->BufferHeight;
   my $width = System::Console->BufferWidth;
-  lives_ok { System::Console->SetBufferSize($width, $height) } 'Console->SetBufferSize';
+  lives_ok { System::Console->SetBufferSize($width, $height) } 
+    'Console->SetBufferSize';
   is System::Console->BufferHeight, $height, 'Console->BufferHeight';
   is System::Console->BufferWidth, $width, 'Console->BufferWidth';
 };
@@ -222,7 +225,8 @@ subtest 'SetCursorPosition' => sub {
   plan tests => 3;
   my $x = System::Console->CursorLeft;
   my $y = System::Console->CursorTop;
-  lives_ok { System::Console->SetCursorPosition($x, $y) } 'Console->SetCursorPosition';
+  lives_ok { System::Console->SetCursorPosition($x, $y) } 
+    'Console->SetCursorPosition';
   cmp_ok System::Console->CursorLeft, '>=', 0, 'Console->CursorLeft';
   cmp_ok System::Console->CursorTop, '>=', $y, 'Console->CursorTop';
 };
@@ -230,7 +234,8 @@ subtest 'SetCursorPosition' => sub {
 subtest 'GetCursorPosition' => sub {
   plan tests => 3;
   my ($x, $y);
-  lives_ok { ($x, $y) = @{ System::Console->GetCursorPosition() } } 'Console->GetCursorPosition';
+  lives_ok { ($x, $y) = @{ System::Console->GetCursorPosition() } } 
+    'Console->GetCursorPosition';
   ok defined($x), 'Console->CursorLeft';
   ok defined($y), 'Console->CursorTop';
 };

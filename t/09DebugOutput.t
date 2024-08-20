@@ -1,18 +1,10 @@
 use 5.014;
 use warnings;
 
-use Test::More;
+use Test::More tests => 10;
 use Test::Exception;
-use FindBin qw( $Script );
 
-BEGIN {
-  unless ( $^O eq 'MSWin32' ) {
-    plan skip_all => 'This is not MSWin32';
-  }
-  else {
-    plan tests => 10;
-  }
-}
+use FindBin qw( $Script );
 
 BEGIN {
   use_ok 'Win32::Console::DotNet';

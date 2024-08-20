@@ -1,17 +1,8 @@
 use 5.014;
 use warnings;
 
-use Test::More;
+use Test::More tests => 7;
 use Test::Exception;
-
-BEGIN {
-  unless ( $^O eq 'MSWin32' ) {
-    plan skip_all => 'This is not MSWin32';
-  }
-  else {
-    plan tests => 7;
-  }
-}
 
 BEGIN {
   use_ok 'Win32::Console::DotNet';

@@ -57,7 +57,7 @@ lives_ok(
 lives_ok(
   sub {
     my $lock = Win32Native::GetKeyState(0x14) & 1;
-    diag sprintf("CapsLock: %s", $lock ? 'enabled' : 'disabled');
+    note sprintf("CapsLock: %s", $lock ? 'enabled' : 'disabled');
   },
   'GetKeyState(VK_CAPITAL)'
 );
@@ -65,7 +65,7 @@ lives_ok(
 lives_ok(
   sub {
     my $lock = Win32Native::GetKeyState(0x90) & 1;
-    diag sprintf("NumberLock: %s", $lock ? 'enabled' : 'disabled');
+    note sprintf("NumberLock: %s", $lock ? 'enabled' : 'disabled');
   },
   'GetKeyState(VK_NUMLOCK)'
 );

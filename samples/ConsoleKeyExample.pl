@@ -22,7 +22,7 @@ sub main {
   do {
     Console->WriteLine("Press a key, together with Alt, Ctrl, or Shift.");
     Console->WriteLine("Press Esc to exit.");
-    $input = ConsoleKeyInfo->new( Console->ReadKey(1) );
+    $input = Console->ReadKey(1);
 
     my $output = sprintf("You pressed %s", $input->Key->$ToString());
     my $modifiers = FALSE;

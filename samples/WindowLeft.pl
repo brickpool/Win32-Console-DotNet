@@ -18,13 +18,13 @@ sub main {
   ShowConsoleStatistics();
   do {
     $key = Console->ReadKey(1);
-    if ( $key->{Key} == ConsoleKey->LeftArrow ) {
+    if ( $key->Key == ConsoleKey->LeftArrow ) {
       my $pos = Console->WindowLeft - 1;
       if ( $pos >= 0 && $pos + Console->WindowWidth <= Console->BufferWidth) {
         Console->WindowLeft( $pos );
         $moved = 1;
       }
-    } elsif ( $key->{Key} == ConsoleKey->RightArrow ) {
+    } elsif ( $key->Key == ConsoleKey->RightArrow ) {
       my $pos = Console->WindowLeft + 1;
       if ( $pos + Console->WindowWidth <= Console->BufferWidth ) {
         Console->WindowLeft( $pos );

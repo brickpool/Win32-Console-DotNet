@@ -14,7 +14,7 @@ BEGIN {
     plan skip_all => 'This is not MSWin32';
   }
   else {
-    plan tests => 26;
+    plan tests => 27;
   }
 }
 
@@ -39,6 +39,7 @@ package ConsoleManualTests {
     require_ok 'ConsoleColor';
     require_ok 'ConsoleKey';
     require_ok 'ConsoleModifiers';
+    require_ok 'ConsoleKeyInfo';
   }
 
   use Exporter qw( import );
@@ -175,7 +176,7 @@ package ConsoleManualTests {
     System::Console->WriteLine("Please type \"console\" ". 
       "(without the quotes). You shouldn't see it as you type:");
     foreach my $k ( qw{ C O N S O L E } ) {
-      assert 'Equal' { $k eq chr System::Console->ReadKey(TRUE())->{Key} };
+      assert 'Equal' { $k eq chr System::Console->ReadKey(TRUE())->Key };
     }
     AssertUserExpectedResults("\"console\" correctly not echoed as you ". 
       "typed it");
@@ -185,7 +186,7 @@ package ConsoleManualTests {
     System::Console->WriteLine("Please type \"console\" ". 
       "(without the quotes). You should see it as you type:");
     foreach my $k ( qw{ C O N S O L E } ) {
-      assert 'Equal' { $k eq chr System::Console->ReadKey(FALSE())->{Key} };
+      assert 'Equal' { $k eq chr System::Console->ReadKey(FALSE())->Key };
     }
     AssertUserExpectedResults("\"console\" correctly echoed as you typed it");
   }
@@ -197,13 +198,13 @@ package ConsoleManualTests {
     while ($keysRead < 50) {
       if (System::Console->KeyAvailable) {
         my $keyInfo = System::Console->ReadKey(FALSE);
-        assert 'Equal' { ConsoleKey->Enter == $keyInfo->{Key} };
+        assert 'Equal' { ConsoleKey->Enter == $keyInfo->Key };
         $keysRead++;
       }
     }
     while (System::Console->KeyAvailable) {
       my $keyInfo = System::Console->ReadKey(TRUE);
-      assert 'Equal' { ConsoleKey->Enter == $keyInfo->{Key} };
+      assert 'Equal' { ConsoleKey->Enter == $keyInfo->Key };
     }
     AssertUserExpectedResults("no empty newlines appear");
   }
@@ -214,7 +215,7 @@ package ConsoleManualTests {
     my $actual = System::Console->ReadKey(TRUE);
     System::Console->WriteLine();
 
-    assert 'Equal' { $expected->{Key} == $actual->{Key} };
+    assert 'Equal' { $expected->Key == $actual->Key };
     assert 'Equal' { $expected->{Modifiers} == $actual->{Modifiers} };
     assert 'Equal' { $expected->{KeyChar} eq $actual->{KeyChar} };
   }
@@ -223,30 +224,30 @@ package ConsoleManualTests {
     state $MkConsoleKeyInfo = sub {
       my ($requestedKeyChord, $keyChar, $consoleKey, $modifiers) = @_;
       return {
-        $requestedKeyChord => {
+        $requestedKeyChord => bless({
           Key => $consoleKey,
           KeyChar => $keyChar,
           Modifiers => $modifiers,
-        },
+        }, 'ConsoleKeyInfo'),
       };
     };
 
     my @yield = (
       $MkConsoleKeyInfo->("Ctrl+B", "\x02", ord('B'), 
-        ConsoleModifiers::Control),
+        ConsoleModifiers->Control),
       $MkConsoleKeyInfo->("Ctrl+Alt+B", "\x00", ord('B'), 
-        ConsoleModifiers::Control | ConsoleModifiers::Alt),
+        ConsoleModifiers->Control | ConsoleModifiers->Alt),
       $MkConsoleKeyInfo->("Enter", "\r", ConsoleKey->Enter, 0),
     );
 
     if ( $^O eq 'MSWin32' ) {
       push @yield, $MkConsoleKeyInfo->("Ctrl+J", "\n", ord('J'), 
-        ConsoleModifiers::Control);
+        ConsoleModifiers->Control);
     } else {
       # Ctrl+J is mapped by every Unix Terminal as Ctrl+Enter with new line 
       # character
       push @yield, $MkConsoleKeyInfo->("Ctrl+J", "\n", ConsoleKey->Enter, 
-        ConsoleModifiers::Control);
+        ConsoleModifiers->Control);
     }
 
     return @yield;
@@ -304,13 +305,13 @@ package ConsoleManualTests {
 
     while (TRUE) {
       my $k = System::Console->ReadKey(TRUE);
-      if ( $k->{Key} == ConsoleKey->Enter ) {
+      if ( $k->Key == ConsoleKey->Enter ) {
         last;
       }
 
       my $left = System::Console->CursorLeft; 
       my $top = System::Console->CursorTop;
-      switch: for ($k->{Key}) {
+      switch: for ($k->Key) {
         case: $_ == ConsoleKey->UpArrow and do {
           System::Console->CursorTop( $top - 1 ) if $top > 0;
           last;
@@ -335,7 +336,7 @@ package ConsoleManualTests {
   }
 
   sub EncodingTest {
-    System::Console->WriteLine(System::Console->OutputEncoding);
+    System::Console->WriteLine(ref System::Console->OutputEncoding);
     System::Console->WriteLine("'\x{03A0}\x{03A3}'.");
     AssertUserExpectedResults("Pi and Sigma or question marks");
   }
@@ -390,9 +391,9 @@ package ConsoleManualTests {
     my $info = System::Console->ReadKey();
     System::Console->WriteLine();
   
-    switch: for (chr $info->{Key}) {
+    switch: for (chr $info->Key) {
       case: /^[YN]$/ and do {
-        assert 'Equal' { 'Y' eq chr $info->{Key} };
+        assert 'Equal' { 'Y' eq chr $info->Key };
         last
       };
       default: {

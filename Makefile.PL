@@ -34,6 +34,7 @@ WriteMakefile(
   },
 
   TEST_REQUIRES => {
+    'Perl::OSType'    => 1.009,
     'Test::Exception' => 0.43,
     'Test::Simple'    => 1.302188,
   },
@@ -59,6 +60,10 @@ WriteMakefile(
           'Config'            => 0,
           'constant'          => 0,
           'Encode'            => 0,
+          'Encode::Alias'     => 0,
+          'Encode::Byte'      => 0,
+          'Encode::Encoding'  => 0,
+          'Encode::Unicode'   => 0,
           'English'           => 0,
           'Exporter'          => 0,
           'IO::File'          => 0,
@@ -71,17 +76,21 @@ WriteMakefile(
           'warnings'          => 0,
         },
         recommends => {
-          'autodie'       => 0,
           'bytes'         => 0,
+          'Capture::Tiny' => 0,
+          'CLDR::Number'  => 0,
           'DateTime'      => 0,
+          'HTTP::Date'    => 0,
           'Time::HiRes'   => 0,
+          'Time::Piece'   => 0,
           'Type::Tiny'    => 0,
         },
       },
       test => {
         requires => { # v5.14 builtin modules
-          'Class::Struct'     => 0,
+          'autodie'           => 0,
           'FindBin'           => 0,
+          'IPC::Open3'        => 0,
           'POSIX'             => 0,
           'Scalar::Util'      => 0,
           'Time::HiRes'       => 0,

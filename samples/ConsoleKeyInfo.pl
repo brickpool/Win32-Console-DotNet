@@ -21,7 +21,7 @@ sub main {
     "console key.");
   Console->WriteLine("Press the Escape (Esc) key to quit: \n");
   do {
-    $cki = ConsoleKeyInfo->new( Console->ReadKey() );
+    $cki = Console->ReadKey();
     Console->Write(" --- You pressed ");
     Console->Write("ALT+") if $cki->Modifiers & ConsoleModifiers->Alt;
     Console->Write("SHIFT+") if $cki->Modifiers & ConsoleModifiers->Shift;
