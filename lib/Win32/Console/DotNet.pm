@@ -2,47 +2,19 @@
 
 =head1 NAME
 
-Win32::Console::DotNet - Win32::Console .NET interface
+Win32::Console::DotNet - Win32 Console .NET interface
 
 =head1 SYNOPSIS
 
 Simply integrate this module into your package or script.
 
   use Win32::Console::DotNet;
-  #
-  System::Console->WriteLine("The current console title is: \"%s\"",
-    System::Console->Title);
-  System::Console->WriteLine("\t(Press any key to change the console title.)");
-  System::Console->ReadKey(1);
-  System::Console->Title( "The title has changed!" );
-  System::Console->WriteLine("Note that the new console title is \"%s\"\n".
-    "\t(Press any key to quit.)", System::Console->Title);
-  System::Console->ReadKey(1);
-  #
-  # This example produces the following results:
-  #     The current console title is: "Command Prompt - perl  samples\Title.pl"
-  #         (Press any key to change the console title.)
-  #     Note that the new console title is "The title has changed!"
-  #         (Press any key to quit.)
-  #
+  System::Console->WriteLine();
 
-Alternatively, using the System namespace.
-
-  use Time::Piece;
   use Win32::Console::DotNet;
+  # using the System namespace
   use System;
-  #
-  Console->Clear();
-  my $dat = localtime;
-  #
-  Console->Write("\nToday is %s at %s.", $dat->mdy, $dat->hms);
-  Console->Write("\nPress Enter key to continue... ");
-  Console->ReadLine();
-  #
-  # The example displays output like the following:
-  #     Today is 07/30/2024 at 08:32:54.
-  #     Press Enter key to continue...
-  #
+  Console->WriteLine();
 
 =cut
 
@@ -59,7 +31,7 @@ use namespace::sweep;
 
 # version '...'
 our $version = 'v4.6.0';
-our $VERSION = '0.005000';
+our $VERSION = '0.004004';
 $VERSION = eval $VERSION;
 
 # authority '...'
@@ -74,16 +46,11 @@ use Devel::StrictMode;
 no if !STRICT, 'warnings', qw( void );
 
 use Config;
-use Encode ();
-use Encode::Alias ();
 use English qw( -no_match_vars );
 use IO::File;
 use IO::Handle;
 use IO::Null;
-use List::Util qw(
-  first 
-  max
-);
+use List::Util qw( max );
 use PerlX::Assert;
 use threads;
 use threads::shared;
@@ -92,108 +59,29 @@ use Win32::Console;
 use Win32API::File;
 
 # ------------------------------------------------------------------------
-# Encode::Encoding -------------------------------------------------------
-# ------------------------------------------------------------------------
-
-# Gets the code page identifier of the current Encoding.
-my $CodePage = sub {
-  assert { @_ == 1 };
-  my $self = shift;
-  assert { ref($self) && $self->isa('Encode::Encoding') };
-
-  my $regex = qr/^cp(\d+)$/;
-  my @aliases = grep { 
-    /$regex/ && $Encode::Alias::Alias{$_} eq $self;
-  } keys(%Encode::Alias::Alias);
-  my $element = first { /$regex/ } ( $self->name, @aliases );
-  return $element && $element =~ $regex ? 0+ $1 : 0;
-};
-
-# Allows additional 'cpXXXX' to be used as an alias for encoding. Encoding may 
-# be either the name of an encoding or an encoding object (as described in 
-# Encode).
-BEGIN {
-  # require Encode;
-  Encode::Alias::define_alias( cp20127  => 'ascii'  );
-  Encode::Alias::define_alias( cp20866  => 'koi8-r' );
-  Encode::Alias::define_alias( cp21866  => 'koi8-u' );
-
-  require Encode::Unicode;
-  Encode::Alias::define_alias( cp1200   => 'UTF-16LE' );
-  Encode::Alias::define_alias( cp1201   => 'UTF-16BE' );
-  Encode::Alias::define_alias( cp12000  => 'UTF-32LE' );
-  Encode::Alias::define_alias( cp12001  => 'UTF-32BE' );
-
-  require Encode::Byte;
-  Encode::Alias::define_alias( qr/^cp2859(\d)$/i  => '"iso-8859-$1"'  );
-  Encode::Alias::define_alias( qr/^cp2860(3|5)$/i => '"iso-8859-1$1"' );
-
-  # require Encode::CN;
-  Encode::Alias::define_alias( cp51936 => 'euc-cn' );
-
-  # require Encode::JN;
-  Encode::Alias::define_alias( cp20932 => 'euc-jp'      );
-  Encode::Alias::define_alias( cp50221 => 'iso-2022-jp' );
-
-  # require Encode::KR;
-  Encode::Alias::define_alias( cp50225 => 'iso-2022-kr' );
-  Encode::Alias::define_alias( cp51949 => 'euc-kr'      );
-}
-
-# ------------------------------------------------------------------------
 # Class Defnition --------------------------------------------------------
 # ------------------------------------------------------------------------
 
 =head1 DESCRIPTION
 
-The I<Win32::Console::DotNet> class offers fundamental support for Windows
-applications that read from and write to a console.
+The console is a window in which users interact with a text-based console
+application by entering text input via the computer keyboard and reading text 
+output from the computer terminal. 
 
-The I<Win32::Console::DotNet> class is based on the L<Windows::Console> module 
-and provides an I<.NET> compatible API. 
+The I<System::Console> class provides basic support for applications that read 
+characters from and write characters to the console.
 
-The I<.NET> API provides a number of benefits that allow developers to 
-effectively create console applications and efficiently manage Windows console 
-applications. Here are some of the key features:
-
-=over
-
-=item * B<Windows Console Functions>: 
-The I<.NET> API offers a wide range of functions for handling input and 
-output, such as reading keyboard inputs and writing text to the screen. These 
-low-level functions such as I<ReadConsoleInput>, I<WriteConsoleOutput>, and 
-I<SetConsoleCursorPosition> are suitably abstracted by the I<.NET> API.
-
-=item * B<Windows Console Structures>:
-Access to low-level data structures such as I<CONSOLE_SCREEN_BUFFER_INFO> or 
-I<INPUT_RECORD> is simplified by using the I<.NET> API. These low-level console
-structures are effectively managed by this module. 
-
-=item * B<Windows Console Extentions>:
-It provides an extended compatibility layer to the classic Windows Console API.
-The I<.NET> API provided in this module is well-known and thoroughly 
-documented, transforming the otherwise complex Windows Console API into a 
-powerful tool for developing Windows console applications. 
-
-=back
-
-B<To summarize>: The I<.Net> API provides easy direct access to console 
-windows and allows detailed control over display and interaction, making your 
-applications based on the classic Windows console API more robust and 
-therefore better.
-
-B<Note>: I<System::Console> is the singleton class that represents the 
-I<Win32::Console::DotNet> console applications. You can take a closer look at 
-the use of I<System::Console> in the examples provided.
+B<Note>: I<System::Console> is singleton a class that has represents the 
+standard input, output, and error streams for console applications.
 
 =head2 Class
 
-public class I<< Win32::Console::DotNet >>
+public class I<< System::Console >>
 
 Object Hierarchy
 
   Class::Tiny::Object
-    Win32::Console::DotNet
+    System::Console
 
 =cut
 
@@ -208,8 +96,6 @@ package Win32::Console::DotNet {
 =cut
 
   use namespace::sweep -also => [qw(
-    TYPE_TINY
-    TYPES
     is_Bool
     is_FileHandle
     is_Object
@@ -242,8 +128,7 @@ This module imports the following type constraints:
 
 =cut
 
-  use constant TYPE_TINY => eval { require Types::Standard };
-  use constant TYPES => qw(
+  use Type::Nano qw(
     Defined
     ArrayRef
     CodeRef
@@ -252,25 +137,20 @@ This module imports the following type constraints:
     Bool
     Int
   );
-  use if  TYPE_TINY, 'Types::Standard', TYPES;
-  use if !TYPE_TINY, 'Type::Nano', TYPES;
 
 =item I<is_Bool>
 
   sub is_Bool($value) : Bool
 
-Check for a reasonable boolean value. Accepts C<1>, C<0>, the empty string and 
-C<undef>.
+Check for a reasonable boolean value. Accepts 1, 0, the empty string and undef.
 
-I<Param>: C<$value> to be checked.
+I<param> $value to be checked
 
-I<Returns>: I<true> if operand is boolean.
+I<return> true if operand is boolean
 
 =cut
 
   sub is_Bool($) {
-    goto &Types::Standard::is_Bool 
-      if exists &Types::Standard::is_Bool;
     assert { @_ == 1 };
     return Bool->check($_[0]);
   }
@@ -281,15 +161,13 @@ I<Returns>: I<true> if operand is boolean.
 
 Check for a blessed object.
 
-I<Param>: C<$value> to be checked.
+I<param> $value to be checked
 
-I<Returns>: I<true> if I<$value> is blessed.
+I<return> true if $value is blessed
 
 =cut
 
   sub is_Object($) {
-    goto &Types::Standard::is_Object 
-      if exists &Types::Standard::is_Object;
     assert { @_ == 1 };
     return Object->check($_[0]);
   }
@@ -300,15 +178,13 @@ I<Returns>: I<true> if I<$value> is blessed.
 
 Check for a file handle.
 
-I<Param>: C<$value> to be checked.
+I<param> $value to be checked
 
-I<Returns>: I<true> if I<$value> is a file handle.
+I<return> true if $value is a file handle
 
 =cut
 
   sub is_FileHandle($) {
-    goto &Types::Standard::is_FileHandle 
-      if exists &Types::Standard::is_FileHandle;
     assert { @_ == 1 };
     return
       (ref($_[0]) eq 'GLOB')
@@ -326,11 +202,11 @@ I<Returns>: I<true> if I<$value> is a file handle.
 
 Check the array reference.
 
-I<Param>: C<$ref> to be checked.
+I<param> $ref to be checked
 
-I<Returns>: C<$ref> if operand is an array reference.
+I<return> $ref if operand is an array reference
 
-I<Throws>: I<IllegalArgumentException> if the check fails.
+I<throw> IllegalArgumentException if the check fails
 
 =cut
 
@@ -348,11 +224,11 @@ I<Throws>: I<IllegalArgumentException> if the check fails.
 
 Check the code reference.
 
-I<Param>: C<$ref> to be checked.
+I<param> $ref to be checked
 
-I<Returns>: C<$ref> if operand is a code reference.
+I<return> $ref if operand is a code reference
 
-I<Throws>: I<IllegalArgumentException> if the check fails.
+I<throw> IllegalArgumentException if the check fails
 
 =cut
 
@@ -370,11 +246,11 @@ I<Throws>: I<IllegalArgumentException> if the check fails.
 
 Check the string that cannot be stringified.
 
-I<Param>: C<$value> to be checked.
+I<param> $value to be checked
 
-I<Returns>: C<$value> if the C<$value> is a string.
+I<return> $value if the value is a string
 
-I<Throws>: I<IllegalArgumentException> if the check fails.
+I<throw> IllegalArgumentException if the check fails
 
 =cut
 
@@ -392,31 +268,25 @@ I<Throws>: I<IllegalArgumentException> if the check fails.
 
 Check for a file handle.
 
-I<Param>: C<$value> to be checked.
+I<param> $value to be checked
 
-I<Returns>: C<$value> if C<$value> is a file handle.
+I<return> $value if $value is a file handle
 
-I<Throws>: I<IllegalArgumentException> if the check fails.
+I<throw> IllegalArgumentException if the check fails
 
 =cut
-
   sub assert_FileHandle($) {
     assert { @_ == 1 };
     unless ( is_FileHandle $_[0] ) {
-      my $message;
-      if ( exists &Types::Standard::FileHandle ) {
-        $message = Types::Standard::FileHandle->get_message($_[0]);
-      } else {
         require B;
         my $value = shift;
         my $name = 'FileHandle';
-        $message = 
+      my $message = 
           !defined($value)
             ? sprintf("Undef did not pass type constraint %s", 'FileHandle')
             : sprintf("Value %s did not pass type constraint %s", 
                 B::perlstring($_[0]), 'FileHandle')
             ;
-      }
       confess("IllegalArgumentException: %s\n", $message);
     }
     return $_[0];
@@ -428,14 +298,13 @@ I<Throws>: I<IllegalArgumentException> if the check fails.
 
 Check for a blessed object.
 
-I<Param>: C<$value> to be checked.
+I<param> $value to be checked
 
-I<Returns>: C<$value> if C<$value> is blessed.
+I<return> $value if $value is blessed
 
-I<Throws>: I<IllegalArgumentException> if the check fails.
+I<throw> IllegalArgumentException if the check fails
 
 =cut
-
   sub assert_Object($) {
     assert { @_ == 1 };
     unless ( Object->check($_[0]) ) {
@@ -448,14 +317,13 @@ I<Throws>: I<IllegalArgumentException> if the check fails.
 
   sub assert_Bool($value) : Bool
 
-Check the boolean value. Accepts C<1>, C<0>, the empty string (C<''> or C<"">) 
-and C<undef>.
+Check the boolean value. Accepts 1, 0, the empty string and undef.
 
-I<Param>: C<$value> to be checked.
+I<param> $value to be checked
 
-I<Returns>: C<$value> if the C<$value> is boolean.
+I<return> $value if the value is boolean
 
-I<Throws>: I<IllegalArgumentException> if the check fails.
+I<throw> IllegalArgumentException if the check fails
 
 =cut
 
@@ -473,11 +341,11 @@ I<Throws>: I<IllegalArgumentException> if the check fails.
 
 Check for on integer; strict constaint.
 
-I<Param>: C<$value> to be checked.
+I<param> $value to be checked
 
-I<Returns>: C<$value> if the C<$value> is an integer.
+I<return> $value if the value is an integer
 
-I<Throws>: I<IllegalArgumentException> if the check fails.
+I<throw> IllegalArgumentException if the check fails
 
 =cut
 
@@ -551,24 +419,27 @@ I<Throws>: I<IllegalArgumentException> if the check fails.
 
 =head2 Constants
 
-=begin private
-
 =over
 
 =item I<_DEBUG>
 
   use constant _DEBUG => 1|undef;
 
-C<_DEBUG> is defined as 1 if the environment variable C<NDEBUG> or 
-C<PERL_NDEBUG> is not defined as I<true> and the environment variable 
-C<EXTENDED_TESTING> has been set to I<true>, otherwise undefined.
+I<_DEBUG> is defined as 1 if the environment variable C<NDEBUG> or 
+C<PERL_NDEBUG> is not defined as true and any of the following environment 
+variables have been set to true, otherwise undefined.
+
+  PERL_STRICT
+  EXTENDED_TESTING
+  AUTHOR_TESTING
+  RELEASE_TESTING
+
+I<see> L<Devel::StrictMode>
 
 =cut
 
-use constant _DEBUG => (  $ENV{EXTENDED_TESTING} 
-                      && !$ENV{NDEBUG} 
-                      && !$ENV{PERL_NDEBUG}
-                    ) ? 1 : undef;
+  use constant _DEBUG => (STRICT and !$ENV{NDEBUG} || !$ENV{PERL_NDEBUG}) 
+                          ? 1 : undef;
 
 =item I<TRUE>
 
@@ -579,9 +450,9 @@ use constant _DEBUG => (  $ENV{EXTENDED_TESTING}
     FALSE => !! '',
   };
 
-Defines C<TRUE> and C<FALSE> constants.
+Defines TRUE and FALSE constants.
 
-I<See also>: L<constant::boolean>
+I<see> constant::boolean
 
 =cut
 
@@ -632,28 +503,24 @@ But I get an exception if I use buffer lengths longer than
 
 =item I<StdConUnicodeEncoding>
 
-  use constant StdConUnicodeEncoding => Encode::find_encoding('UTF-16');
+  use constant StdConUnicodeEncoding => { CodePage => Int, bigEndian => Int };
 
 The value corresponds to the Windows code pages 1200 (little endian byte 
 order) or 1201 (big endian byte order).
 
 =cut
 
-  use constant StdConUnicodeEncoding => Encode::find_encoding('cp120' . 
-    ($Config{byteorder} & 0b1));
-
-=back
-
-=end private
-
-=over
+  use constant StdConUnicodeEncoding => {
+    CodePage  => $Config{byteorder} =~ /1234/ ? 1200 : 1201,
+    bigEndian => $Config{byteorder} & 0b1,
+  };
 
 =item I<WinError.h>
 
-  use constant Win32Native::ERROR_INVALID_HANDLE = 0x6;
+  constant Win32Native::ERROR_INVALID_HANDLE = 0x6;
 
-C<ERROR_INVALID_HANDLE> is a predefined constant that is used to represent a 
-value that is passed to or returned by one or more built-in functions.
+ERROR_INVALID_HANDLE is a predefined constant that is used to represent a value
+that is passed to or returned by one or more built-in functions.
 
 =cut
 
@@ -680,7 +547,7 @@ value that is passed to or returned by one or more built-in functions.
     VK_SCROLL   => 0x91,
   };
 
-Virtual-Key Codes from I<Winuser.h>
+Virtual-Key Codes from Winuser.h
 
 =cut
 
@@ -707,8 +574,8 @@ Virtual-Key Codes from I<Winuser.h>
 
   use constant Win32Native::KEY_EVENT => 0x0001;
 
-The Event member contains a I<KEY_EVENT_RECORD> structure with information 
-about a keyboard event.
+The Event member contains a KEY_EVENT_RECORD structure with information about a
+keyboard event.
 
 =cut
 
@@ -729,7 +596,7 @@ about a keyboard event.
 Constants for accessing the input event array which is used for the console 
 input buffer API calls.
 
-I<See also>: I<KEY_EVENT_RECORD> structure.
+I<see> KEY_EVENT_RECORD structure.
 
 =cut
 
@@ -748,7 +615,7 @@ I<See also>: I<KEY_EVENT_RECORD> structure.
 Constants for accessing the console screen buffer array which contains 
 information about a console screen buffer.
 
-I<See also>: I<CONSOLE_SCREEN_BUFFER_INFO> structure.
+I<see> CONSOLE_SCREEN_BUFFER_INFO structure.
 
 =cut
 
@@ -786,7 +653,7 @@ I<See also>: I<CONSOLE_SCREEN_BUFFER_INFO> structure.
 
   my $_instance ( is => private, type => Object );
 
-The instance reference is stored in the C<$_instance> scalar.
+The instance reference is stored in the I<$_instance> scalar.
 
 =cut
 
@@ -795,19 +662,19 @@ The instance reference is stored in the C<$_instance> scalar.
 
 =item I<_in>
 
-  my $_in ( is => private, type => FileHandle );
+  my $_in ( is => private, type => Win32::Console );
 
 For L</In>
 
 =item I<_out>
 
-  my $_out ( is => private, type => FileHandle );
+  my $_out ( is => private, type => Win32::Console );
 
 For L</Out>
 
 =item I<_error>
 
-  my $_error ( is => private, type => FileHandle ):
+  my $_error ( is => private, type => Win32::Console ):
 
 For L</Error>
 
@@ -851,23 +718,6 @@ Reference value of L<$ATTR_NORMAL|Win32::Console>, used for L</ResetColor>.
 =cut
 
   my $_defaultColors = \$ATTR_NORMAL;
-
-=item I<_isOutTextWriterRedirected>
-
-  my $_isOutTextWriterRedirected ( is => private, type => Bool ) = FALSE;
-
-For L</OutputEncoding>
-
-=item I<_isErrorTextWriterRedirected>
-
-  my $_isErrorTextWriterRedirected ( is => private, type => Bool ) = FALSE;
-
-For L</OutputEncoding>
-
-=cut
-
-  my $_isOutTextWriterRedirected = FALSE;
-  my $_isErrorTextWriterRedirected = FALSE;
 
 =item I<_inputEncoding>
 
@@ -951,8 +801,8 @@ or for short, non-blocking OS calls.
 Use this for blocking in Console->ReadKey, which needs to protect itself in 
 case multiple threads call it simultaneously.
 
-Use a L</ReadKey>-specific lock though, to allow other fields to be 
-initialized on this type.
+Use a ReadKey-specific lock though, to allow other fields to be initialized on 
+this type.
 
 =cut
 
@@ -986,11 +836,11 @@ Holds the input handle of the console.
   my $_leaveOpen ( is => private, type => HashRef ) = {};
 
 If a file handle needs to be protected against automatic closing (when leaving 
-the scope), the associated parameter C<$ownsHandle> is set to I<false> when 
+the scope), the associated parameter I<$ownsHandle> is set to false when 
 L</SafeFileHandle> is called.
 
-To leave the file handle open, we save the L<IO::Handle> object in this hash 
-so that the C<REFCNT> is C<< > 0 >>.
+To leave the file handle open, we save the IO:Handle object in this hash 
+so that the REFCNT is > 0. 
 
 =cut
 
@@ -1068,7 +918,7 @@ package.
 A Color that specifies the background color of the console; that is, the color 
 that appears behind each character.  The default is black.
 
-I<Throws>: I<ArgumentException> if the color specified in a set operation is not
+I<throws> ArgumentException if the color specified in a set operation is not
 valid.
 
 =cut
@@ -1135,11 +985,11 @@ valid.
 
 The current height, in rows, of the buffer area.
 
-I<Throws>: I<ArgumentOutOfRangeException> if the value in a set operation is 
-less than or equal to zero or greater than or equal to C<0x7fff> or less than 
+I<throws> ArgumentOutOfRangeException if the value in a set operation is less 
+than or equal to zero or greater than or equal to 0x7fff or less than 
 L</WindowTop> + L</WindowHeight>.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> An I/O error occurred.
 
 =cut
 
@@ -1173,8 +1023,8 @@ I<Throws>: I<IOException> if an I/O error occurred.
 
 The current width, in columns, of the buffer area.
 
-I<Throws>: I<ArgumentOutOfRangeException> if the value in a set operation is 
-less than or equal to zero or greater than or equal to C<0x7fff> or less than 
+I<throws> ArgumentOutOfRangeException if the value in a set operation is less 
+than or equal to zero or greater than or equal to 0x7fff or less than 
 L</WindowLeft> + L</WindowWidth>.
 
 =cut
@@ -1207,8 +1057,8 @@ L</WindowLeft> + L</WindowWidth>.
 
   field CapsLock ( is => rwp, type => Bool );
 
-Gets a value indicating whether the C<CAPS LOCK> keyboard toggle is turned on 
-or turned off.
+Gets a value indicating whether the CAPS LOCK keyboard toggle is turned on or 
+turned off.
 
 =cut
 
@@ -1236,8 +1086,8 @@ or turned off.
 
 The column position of the cursor within the buffer area.
 
-I<Throws>: I<ArgumentOutOfRangeException> if the value in a set operation is 
-less than zero or greater than or equal to L</BufferWidth>.
+I<throws> ArgumentOutOfRangeException if the value in a set operation is less 
+than zero or greater than or equal to L</BufferWidth>.
 
 =cut
 
@@ -1272,10 +1122,10 @@ less than zero or greater than or equal to L</BufferWidth>.
 The height of the cursor within a character cell.
 
 The size of the cursor expressed as a percentage of the height of a character 
-cell.  The property value ranges from C<1> to C<100>.
+cell.  The property value ranges from 1 to 100.
 
-I<Throws>: I<ArgumentOutOfRangeException> if the value specified in a set 
-operation is less than C<1> or greater than C<100>.
+I<throws> ArgumentOutOfRangeException if the value specified in a set operation
+is less than 1 or greater than 100.
 
 =cut
 
@@ -1319,8 +1169,8 @@ operation is less than C<1> or greater than C<100>.
 
 The row position of the cursor within the buffer area.
 
-I<Throws>: I<ArgumentOutOfRangeException> if the value in a set operation is 
-less than zero or greater than or equal to L</BufferHeight>.
+I<throws> ArgumentOutOfRangeException if the value in a set operation is less 
+than zero or greater than or equal to L</BufferHeight>.
 
 =cut
 
@@ -1354,7 +1204,7 @@ less than zero or greater than or equal to L</BufferHeight>.
 
 The attribute indicating whether the cursor is visible.
 
-I<True> if the cursor is visible; otherwise, I<false>.
+True if the cursor is visible; otherwise, false.
 
 =cut
 
@@ -1422,7 +1272,7 @@ A FileHandle that represents the standard error stream.
 Color that specifies the foreground color of the console; that is, the color
 of each character that is displayed.  The default is gray.
 
-I<Throws>: I<ArgumentException> if the color specified in a set operation is not
+I<throws> ArgumentException if the color specified in a set operation is not 
 valid.
 
 =cut
@@ -1511,10 +1361,12 @@ A FileHandle that represents the standard input stream.
         if ( !$s ) {
           $reader = IO::Null->new();
         } else {
-          my $enc = __PACKAGE__->InputEncoding;
-          my $cpi = $enc->$CodePage() || Win32::GetConsoleCP();
+          my $enc = do {
+            my $cpi = $_inputEncoding // Win32::GetConsoleCP();
+            $cpi == 65001 ? ':encoding(UTF-8)' : ":encoding(cp$cpi)";
+          };
           $reader = IO::File->new_from_fd(fileno($s), 'r');
-          $reader->binmode(":encoding(cp$cpi)");
+          $reader->binmode($enc);
         }
         $self->$orig($_in = $reader);
       }
@@ -1524,23 +1376,25 @@ A FileHandle that represents the standard input stream.
 
 =item I<InputEncoding>
 
-  field InputEncoding ( is => rw, type => Object );
-  class_has InputEncoding ( is => rw, isa => Object, init_arg => undef );
+  field InputEncoding ( is => rw, type => Int );
 
 Gets or sets the encoding the console uses to write input.
 
-I<Remarks>: A get operation may return a cached value instead of the console's 
+I<note> A get operation may return a cached value instead of the console's 
 current input encoding.
 
 =cut
 
-  sub InputEncoding {
-    assert { @_ >= 1 && @_ <= 2 };
-    my $caller = shift;
+  has InputEncoding => (
+    is        => 'rw',
+    isa       => Int,
+    # init_arg  => undef,
+  );
 
-    assert { $caller };
-    assert { is_Object($caller) || !ref($caller) && $caller eq __PACKAGE__ };
-
+  around 'InputEncoding' => sub {
+    assert { @_ >= 2 && @_ <= 3 };
+    my $orig = assert_CodeRef shift;
+    my $self = assert_Object shift;
     goto SET if @_;
     GET: {
       return $_inputEncoding
@@ -1549,11 +1403,8 @@ current input encoding.
       {
         lock($InternalSyncObject);
 
-        return $_inputEncoding
-          if $_inputEncoding;
-
-        my $cp = Win32::GetConsoleCP() || Win32::GetACP();
-        $_inputEncoding = Encode::find_encoding("cp$cp");
+        my $cp = Win32::GetConsoleCP();
+        $self->$orig($_inputEncoding = $cp);
         return $_inputEncoding;
       }
     }
@@ -1563,12 +1414,13 @@ current input encoding.
         confess("ArgumentNullException:\n". 
           sprintf("$ResourceString{ArgumentNullException}\n", "value"));
       }
+      $self->$orig($value);
 
       {
         lock($InternalSyncObject);
 
         if ( !IsStandardConsoleUnicodeEncoding($value) ) {
-          my $cp = $value->$CodePage();
+          my $cp = $value;
           my $r = Win32::SetConsoleCP($cp);
           if ( !$r ) {
             warn("WinIOError:\n$EXTENDED_OS_ERROR\n");
@@ -1589,106 +1441,91 @@ current input encoding.
 =item I<IsErrorRedirected>
 
   field IsErrorRedirected ( is => ro, type => Bool );
-  class_has IsErrorRedirected ( is => ro, type => Bool, init_arg => undef );
 
 Gets a value that indicates whether error has been redirected from the 
-standard error stream.  I<True> if error is redirected; otherwise, I<false>.
+standard error stream.  True if error is redirected; otherwise, false.
 
 =cut
 
-  sub IsErrorRedirected {
-    assert { @_ == 1 };
-    my $caller = shift;
+  has IsErrorRedirected => (
+    is        => 'ro',
+    isa       => Bool,
+    # init_arg  => undef,
+  );
 
-    assert { $caller };
-    assert { is_Object($caller) || !ref($caller) && $caller eq __PACKAGE__ };
-
+  around 'IsErrorRedirected' => sub {
+    assert { @_ == 2 };
+    my $orig = assert_CodeRef shift;
+    my $self = assert_Object shift;
     GET: {
-      return $_isStdErrRedirected
-        if $_stdErrRedirectQueried;
-
-      {  
+      unless ( $_stdErrRedirectQueried ) {
         lock($InternalSyncObject);
-
-        return $_isStdErrRedirected
-          if $_stdErrRedirectQueried;
-
         my $errHndle = Win32::Console::_GetStdHandle(STD_ERROR_HANDLE);
         $_isStdErrRedirected = IsHandleRedirected($errHndle);
         $_stdErrRedirectQueried = TRUE;
-
-        return $_isStdErrRedirected;
+        $self->$orig($_isStdErrRedirected);
       }
+      return $_isStdErrRedirected;
     }
   };
 
 =item I<IsInputRedirected>
 
   field IsInputRedirected ( is => ro, type => Bool );
-  class_has IsInputRedirected ( is => ro, type => Bool, init_arg => undef );
 
 Gets a value that indicates whether input has been redirected from the 
-standard input stream.  I<True> if input is redirected; otherwise, I<false>.
+standard input stream.  True if input is redirected; otherwise, false.
 
 =cut
 
-  sub IsInputRedirected {
-    assert { @_ == 1 };
-    my $caller = shift;
+  has IsInputRedirected => (
+    is        => 'ro',
+    isa       => Bool,
+    # init_arg  => undef,
+  );
 
-    assert { $caller };
-    assert { is_Object($caller) || !ref($caller) && $caller eq __PACKAGE__ };
-
+  around 'IsInputRedirected' => sub {
+    assert { @_ == 2 };
+    my $orig = assert_CodeRef shift;
+    my $self = assert_Object shift;
     GET: {
-      return $_isStdInRedirected
-        if $_stdInRedirectQueried;
-
-      {
+      unless ( $_stdInRedirectQueried ) {
         lock($InternalSyncObject);
-
-        return $_isStdInRedirected
-          if $_stdInRedirectQueried;
-
         $_isStdInRedirected = IsHandleRedirected(ConsoleInputHandle());
         $_stdInRedirectQueried = TRUE;
-
-        return $_isStdInRedirected;
+        $self->$orig($_isStdInRedirected);
       }
+      return $_isStdInRedirected;
     }
   };
 
 =item I<IsOutputRedirected>
 
   field IsOutputRedirected ( is => ro, type => Bool );
-  class_has IsOutputRedirected ( is => ro, type => Bool, init_arg => undef );
 
 Gets a value that indicates whether output has been redirected from the 
-standard output stream.  I<True> if output is redirected; otherwise, I<false>.
+standard output stream.  True if output is redirected; otherwise, false.
 
 =cut
 
-  sub IsOutputRedirected {
-    assert { @_ == 1 };
-    my $caller = shift;
+  has IsOutputRedirected => (
+    is        => 'ro',
+    isa       => Bool,
+    # init_arg  => undef,
+  );
 
-    assert { $caller };
-    assert { is_Object($caller) || !ref($caller) && $caller eq __PACKAGE__ };
-
+  around 'IsOutputRedirected' => sub {
+    assert { @_ == 2 };
+    my $orig = assert_CodeRef shift;
+    my $self = assert_Object shift;
     GET: {
-      return $_isStdOutRedirected
-        if $_stdOutRedirectQueried;
-
-      {
+      if ( !$_stdOutRedirectQueried ) {
         lock($InternalSyncObject);
-
-        return $_isStdOutRedirected
-          if $_stdOutRedirectQueried;
-
         $_isStdOutRedirected = IsHandleRedirected(ConsoleOutputHandle());
         $_stdOutRedirectQueried = TRUE;
-
-        return $_isStdOutRedirected;
+        $self->$orig($_isStdOutRedirected);
       }
+      return $_isStdOutRedirected;
     }
   };
 
@@ -1824,8 +1661,8 @@ current font and screen resolution.
 
   field NumberLock ( is => ro, type => Bool );
 
-Gets a value indicating whether the C<NUM LOCK> keyboard toggle is turned on 
-or turned off.
+Gets a value indicating whether the NUM LOCK keyboard toggle is turned on or 
+turned off.
 
 =cut
 
@@ -1876,23 +1713,25 @@ A FileHandle that represents the standard output stream.
 
 =item I<OutputEncoding>
 
-  field OutputEncoding ( is => rw, type => Object );
-  class_has OutputEncoding ( is => rw, isa => Object, init_arg => undef );
+  field OutputEncoding ( is => rw, type => Int );
 
 Gets or sets the encoding the console uses to write output.
 
-I<Remarks>: A get operation may return a cached value instead of the console's 
+I<note> A get operation may return a cached value instead of the console's 
 current output encoding.
 
 =cut
 
-  sub OutputEncoding {
-    assert { @_ >= 1 && @_ <= 2 };
-    my $caller = shift;
+  has OutputEncoding => (
+    is        => 'rw',
+    isa       => Int,
+    # init_arg  => undef,
+  );
 
-    assert { $caller };
-    assert { is_Object($caller) || !ref($caller) && $caller eq __PACKAGE__ };
-
+  around 'OutputEncoding' => sub {
+    assert { @_ >= 2 && @_ <= 3 };
+    my $orig = assert_CodeRef shift;
+    my $self = assert_Object shift;
     goto SET if @_;
     GET: {
       return $_outputEncoding
@@ -1904,8 +1743,8 @@ current output encoding.
         return $_outputEncoding
           if $_outputEncoding;
 
-        my $cp = Win32::GetConsoleOutputCP() || Win32::GetACP();
-        $_outputEncoding = Encode::find_encoding("cp$cp");
+        my $cp = Win32::GetConsoleOutputCP();
+        $self->$orig($_outputEncoding = $cp);
         return $_outputEncoding;
       }
     }
@@ -1915,6 +1754,7 @@ current output encoding.
         confess("ArgumentNullException:\n". 
           sprintf("$ResourceString{ArgumentNullException}\n", "value"));
       }
+      $self->$orig($value);
 
       {
         lock($InternalSyncObject);
@@ -1922,17 +1762,17 @@ current output encoding.
         # if Out hasn't been redirected. Also, have the next call to  
         # $_out reinitialize the console code page.
 
-        if ( defined($_out) && !$_isOutTextWriterRedirected ) {
-          $_out->flush();
+        if ( eval { $self->Out } && !$self->IsOutputRedirected ) {
+          $self->Out->flush();
           $_out = undef;
         }
-        if ( defined($_error) && !$_isErrorTextWriterRedirected ) {
-          $_error->flush();
+        if ( eval { $self->Error } && !$self->IsErrorRedirected ) {
+          $self->Error->flush();
           $_error = undef;
         }
 
         if ( !IsStandardConsoleUnicodeEncoding($value) ) {
-          my $cp = $value->$CodePage();
+          my $cp = $value;
           my $r = Win32::SetConsoleOutputCP($cp);
           if ( !$r ) {
             warn("WinIOError:\n$EXTENDED_OS_ERROR\n");
@@ -1949,22 +1789,13 @@ current output encoding.
 
   field Title ( is => rw, type => Str ) = '';
 
-The string to be displayed in the title bar of the console.  The maximum length 
-of the title string is C<24500> characters for set and C<1024> for get.
+The string to be displayed in the title bar of the console.  The maximum length
+of the title string is 24500 characters.
 
-I<Throws>: I<InvalidOperationException> in a get operation, if the specified 
-title is longer than C<24500> characters.
+I<throws> ArgumentOutOfRangeException if in a set operation, the specified 
+title is longer than 24500 characters.
 
-I<Throws>: I<ArgumentOutOfRangeException> in a set operation, if the specified 
-title is longer than C<24500> characters.
-
-I<Throws>: I<ArgumentNullException> in a set operation, if the specified title 
-is C<undef>.
-
-I<Throws>: I<Exception> in a set operation, if the specified title is not a 
-string.
-
-I<Note>: The return value is a empty string if the specific length is > 1024.
+I<throws> Exception if in a set operation, the specified title is not a string.
 
 =cut
 
@@ -2026,15 +1857,14 @@ I<Note>: The return value is a empty string if the specific length is > 1024.
 
   field TreatControlCAsInput ( is => rw, type => Bool ) = FALSE;
 
-Indicating whether the combination of the C<Control> modifier key and C<C> 
-console key (C<Ctrl+C>) is treated as ordinary input or as an interruption 
-that is handled by the operating system.
+Indicating whether the combination of the Control modifier key and C console 
+key (Ctrl+C) is treated as ordinary input or as an interruption that is handled
+by the operating system.
 
-The attribute is I<true> if C<Ctrl+C> is treated as ordinary input; otherwise, 
-I<false>.
+The attribute is true if Ctrl+C is treated as ordinary input; otherwise, false.
 
-I<Throws>: I<Exception> if unable to get or set the input mode of the console 
-input buffer.
+I<throws> Exception if unable to get or set the input mode of the console input
+buffer.
 
 =cut
 
@@ -2100,12 +1930,12 @@ input buffer.
 
 The height of the console window measured in rows.
 
-I<Throws>: I<ArgumentOutOfRangeException> if the value is less than or equal to 
-C<0> or the value plus L</WindowTop> is greater than or equal to C<0x7fff> or 
-the value greater than the largest possible window height for the current 
-screen resolution and console font.
+I<throws> ArgumentOutOfRangeException if the value is less than or equal to 0 
+or the value plus L</WindowTop> is greater than or equal to 0x7fff or the 
+value greater than the largest possible window height for the current screen 
+resolution and console font.
 
-I<Throws>: I<Exception> if an error occurs when reading or writing information.
+I<throws> Exception if an error occurs when reading or writing information.
 
 =cut
 
@@ -2139,11 +1969,11 @@ I<Throws>: I<Exception> if an error occurs when reading or writing information.
 
 The leftmost console window position measured in columns.
 
-I<Throws>: I<ArgumentOutOfRangeException> if the value is less than C<0> or
-as a result of the assignment, L</WindowLeft> plus L</WindowWidth> would exceed
+I<throws> ArgumentOutOfRangeException if the value is less than 0 or
+as a result of the assignment, WindowLeft plus L</WindowWidth> would exceed 
 L</BufferWidth>.
 
-I<Throws>: I<Exception> if an error occurs when reading or writing information.
+I<throws> Exception if an error occurs when reading or writing information.
 
 =cut
 
@@ -2177,11 +2007,11 @@ I<Throws>: I<Exception> if an error occurs when reading or writing information.
 
 The uppermost console window position measured in rows.
 
-I<Throws>: I<ArgumentOutOfRangeException> if the value is less than C<0> or
-as a result of the assignment, L</WindowTop> plus L</WindowHeight> would exceed
+I<throws> ArgumentOutOfRangeException if the value is less than  0 or
+as a result of the assignment, WindowTop plus L</WindowHeight> would exceed 
 L</BufferHeight>.
 
-I<Throws>: I<Exception> if an error occurs when reading or writing information.
+I<throws> Exception if an error occurs when reading or writing information.
 
 =cut
 
@@ -2215,12 +2045,12 @@ I<Throws>: I<Exception> if an error occurs when reading or writing information.
 
 The width of the console window measured in columns.
 
-I<Throws>: I<ArgumentOutOfRangeException> if the value is less than or equal to 
-C<0> or the value plus L</WindowLeft> is greater than or equal to C<0x7fff> or 
-the value greater than the largest possible window width for the current screen 
+I<throws> ArgumentOutOfRangeException if the value is less than or equal to 0 
+or the value plus L</WindowLeft> is greater than or equal to 0x7fff or the 
+value greater than the largest possible window width for the current screen 
 resolution and console font.
 
-I<Throws>: I<Exception> if an error occurs when reading or writing information.
+I<throws> Exception if an error occurs when reading or writing information.
 
 =cut
 
@@ -2264,13 +2094,13 @@ I<Throws>: I<Exception> if an error occurs when reading or writing information.
 
 =item I<new>
 
-  factory new() : Win32::Console::DotNet
+  factory new() : System::Console
 
 Public constructor.
 
 =item I<instance>
 
-  factory instance() : Win32::Console::DotNet
+  factory instance() : System::Console
 
 This constructor instantiates an object instance if none exists, otherwise it
 returns an existing instance.
@@ -2337,17 +2167,17 @@ Restore the console before destroying the instance/object.
 
 Plays the sound of a beep through the console speaker.
 
-  method Beep(Int $frequency, Int $duration)
+  method Beep(Int frequency, Int duration)
 
 Plays the sound of a beep of a specified frequency and duration through the 
 console speaker.
 
-I<Param>: C<$frequency> of the beep, ranging from C<37> to C<32767> hertz.
+I<param> $frequency of the beep, ranging from 37 to 32767 hertz.
 
-I<Param>: C<$duration> of the beep measured in milliseconds.
+I<param> $duration of the beep measured in milliseconds.
 
-I<Throws>: I<ArgumentOutOfRangeException> if C<$frequency> is less than C<37> 
-or more than C<32767> hertz or C<$duration> is less than or equal to zero.
+I<throws> ArgumentOutOfRangeException if $frequency is less than 37 or more 
+than 32767 hertz or $duration is less than or equal to zero.
 
 =cut
 
@@ -2381,7 +2211,7 @@ or more than C<32767> hertz or C<$duration> is less than or equal to zero.
 Clears the console buffer and corresponding console window of display 
 information.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
 =cut
 
@@ -2445,7 +2275,7 @@ I<Throws>: I<IOException> if an I/O error occurred.
 
 Gets the position of the cursor.
 
-I<Returns>: the column and row position of the cursor as array reference.
+I<return> the column and row position of the cursor as array reference.
 
 =cut
 
@@ -2467,33 +2297,33 @@ I<Returns>: the column and row position of the cursor as array reference.
 Copies a specified source area of the screen buffer to a specified destination 
 area.
 
-I<Param>: C<$sourceLeft> is the leftmost column of the source area.
+I<param> $sourceLeft is the leftmost column of the source area.
 
-I<Param>: C<$sourceTop> is the topmost row of the source area.
+I<param> $sourceTop is the topmost row of the source area.
 
-I<Param>: C<$sourceWidth> is the number of columns in the source area.
+I<param> $sourceWidth is the number of columns in the source area.
 
-I<Param>: C<$sourceHeight> is the number of rows in the source area.
+I<param> $sourceHeight is the number of rows in the source area.
 
-I<Param>: C<$targetLeft> is the leftmost column of the destination area.
+I<param> $targetLeft is the leftmost column of the destination area.
 
-I<Param>: C<$targetTop> is the topmost row of the destination area.
+I<param> $targetTop is the topmost row of the destination area.
 
-I<Throws>: I<ArgumentOutOfRangeException> if one or more of the parameters is 
-less than zero or C<$sourceLeft> or C<$targetLeft> is greater than or equal to 
-L</BufferWidth> or C<$sourceTop> or C<$targetTop> is greater than or equal to 
-L</BufferHeight> or C<$sourceTop> + C<$sourceHeight> is greater than or equal 
-to L</BufferHeight> or C<$sourceLeft> + C<$sourceWidth> is greater than or 
-equal to L</BufferWidth>.
+I<throws> ArgumentOutOfRangeException if one or more of the parameters is less 
+than zero or $sourceLeft or $targetLeft is greater than or equal to 
+L</BufferWidth> or $sourceTop or $targetTop is greater than or equal to 
+L</BufferHeight> or $sourceTop + $sourceHeight is greater than or equal to 
+L</BufferHeight> or $sourceLeft + $sourceWidth is greater than or equal to 
+L</BufferWidth>.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
-I<Remarks>: If the destination and source parameters specify a position located 
+I<note> If the destination and source parameters specify a position located 
 outside the boundaries of the current screen buffer, only the portion of the 
 source area that fits within the destination area is copied. That is, the 
 source area is clipped to fit the current screen buffer.
 
-The L</MoveBufferArea> method copies the source area to the destination area. If 
+The MoveBufferArea method copies the source area to the destination area. If 
 the destination area does not intersect the source area, the source area is 
 filled with blanks using the current foreground and background colors. 
 Otherwise, the intersected portion of the source area is not filled.
@@ -2505,51 +2335,49 @@ Otherwise, the intersected portion of the source area is not filled.
 Copies a specified source area of the screen buffer to a specified destination 
 area.
 
-I<Param>: C<$sourceLeft> is the leftmost column of the source area.
+I<param> $sourceLeft is the leftmost column of the source area.
 
-I<Param>: C<$sourceTop> is the topmost row of the source area.
+I<param> $sourceTop is the topmost row of the source area.
 
-I<Param>: C<$sourceWidth> is the number of columns in the source area.
+I<param> $sourceWidth is the number of columns in the source area.
 
-I<Param>: C<$sourceHeight> is the number of rows in the source area.
+I<param> $sourceHeight is the number of rows in the source area.
 
-I<Param>: C<$targetLeft> is the leftmost column of the destination area.
+I<param> $targetLeft is the leftmost column of the destination area.
 
-I<Param>: C<$targetTop> is the topmost row of the destination area.
+I<param> $targetTop is the topmost row of the destination area.
 
-I<Param>: C<$sourceChar> is the character used to fill the source area.
+I<param> $sourceChar is the character used to fill the source area.
 
-I<Param>: C<$sourceForeColor> is the foreground color used to fill the source 
-area.
+I<param> $sourceForeColor is the foreground color used to fill the source area.
 
-I<Param>: C<$sourceBackColor> is the background color used to fill the source 
-area.
+I<param> $sourceBackColor is the background color used to fill the source area.
 
-I<Throws>: I<ArgumentOutOfRangeException> if one or more of the parameters is 
-less than zero or C<$sourceLeft> or C<$targetLeft> is greater than or equal to 
-L</BufferWidth> or C<$sourceTop> or C<$targetTop> is greater than or equal to 
-L</BufferHeight> or C<$sourceTop> + C<$sourceHeight> is greater than or equal 
-to L</BufferHeight> or C<$sourceLeft> + C<$sourceWidth> is greater than or 
-equal to L</BufferWidth>.
+I<throws> ArgumentOutOfRangeException if one or more of the parameters is less 
+than zero or $sourceLeft or $targetLeft is greater than or equal to 
+L</BufferWidth> or $sourceTop or $targetTop is greater than or equal to 
+L</BufferHeight> or $sourceTop + $sourceHeight is greater than or equal to 
+L</BufferHeight> or $sourceLeft + $sourceWidth is greater than or equal to 
+L</BufferWidth>.
 
-I<Throws>: I<ArgumentException> if one or both of the color parameters is not 
+I<throws> ArgumentException if one or both of the color parameters is not 
 valid.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
-I<Remarks>: If the destination and source parameters specify a position located 
+I<note> If the destination and source parameters specify a position located 
 outside the boundaries of the current screen buffer, only the portion of the 
 source area that fits within the destination area is copied. That is, the 
 source area is clipped to fit the current screen buffer.
 
-The L</MoveBufferArea> method copies the source area to the destination area. 
-If the destination area does not intersect the source area, the source area is 
-filled with the character specified by C<$sourceChar>, using the colors 
-specified by C<$sourceForeColor> and C<$sourceBackColor>. Otherwise, the 
-intersected portion of the source area is not filled.
+The MoveBufferArea method copies the source area to the destination area. If 
+the destination area does not intersect the source area, the source area is 
+filled with the character specified by sourceChar, using the colors specified 
+by $sourceForeColor and $sourceBackColor. Otherwise, the intersected portion of
+the source area is not filled.
 
-The L</MoveBufferArea> method performs no operation if C<$sourceWidth> or 
-C<$sourceHeight> is zero.
+The MoveBufferArea method performs no operation if $sourceWidth or 
+$sourceHeight is zero.
 
 =cut
 
@@ -2696,12 +2524,10 @@ C<$sourceHeight> is zero.
 
   method OpenStandardError() : FileHandle
   method OpenStandardError(Int $bufferSize) : FileHandle
-  classmethod OpenStandardError() : FileHandle
-  classmethod OpenStandardError(Int $bufferSize) : FileHandle
 
 Acquires the standard error object.
 
-I<Returns>: the standard error object.
+I<return> the standard error object.
 
 =cut
 
@@ -2724,12 +2550,10 @@ I<Returns>: the standard error object.
 
   method OpenStandardInput() : FileHandle
   method OpenStandardInput(Int $bufferSize) : FileHandle
-  classmethod OpenStandardInput() : FileHandle
-  classmethod OpenStandardInput(Int $bufferSize) : FileHandle
 
 Acquires the standard input object.
 
-I<Returns>: the standard input object.
+I<return> the standard input object.
 
 =cut
 
@@ -2752,12 +2576,10 @@ I<Returns>: the standard input object.
 
   method OpenStandardOutput() : FileHandle
   method OpenStandardOutput(Int $bufferSize) : FileHandle
-  classmethod OpenStandardOutput() : FileHandle
-  classmethod OpenStandardOutput(Int $bufferSize) : FileHandle
 
 Acquires the standard output object.
 
-I<Returns>: the standard output object.
+I<return> the standard output object.
 
 =cut
 
@@ -2782,10 +2604,10 @@ I<Returns>: the standard output object.
 
 Reads the next character from the standard input stream.
 
-I<Returns>: the next character from the input stream, or negative one (C<-1>) 
-if there are currently no more characters to be read.
+I<return> the next character from the input stream, or negative one (-1) if 
+there are currently no more characters to be read.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
 =cut
 
@@ -2806,20 +2628,19 @@ I<Throws>: I<IOException> if an I/O error occurred.
 
 =item I<ReadKey>
 
-  method ReadKey() : ConsoleKeyInfo
-  method ReadKey(Bool $intercept) : ConsoleKeyInfo
+  method ReadKey() : HashRef
+  method ReadKey(Bool $intercept) : HashRef
 
 Obtains the next character or function key pressed by the user. 
 The pressed key is optionally displayed in the console window.
 
-I<Param>: C<$intercept> determines whether to display the pressed key in the 
-console window. I<true> to not display the pressed key; otherwise, I<false>.
+I<param> $intercept determines whether to display the pressed key in the 
+console window. true to not display the pressed key; otherwise, false.
 
-I<Returns>: an ConsoleKeyInfo (blessed HashRef) that describes the console key 
-and unicode character, if any, that correspond to the pressed console key.  
-The ConsoleKeyInfo also describes, in a bitwise combination of values, whether 
-one or more C<Shift>, C<Alt>, or C<Ctrl> modifier keys was pressed 
-simultaneously with the console key.
+I<return> an HashRef that describes the console key and unicode character, if 
+any, that correspond to the pressed console key.  The HashRef also describes, 
+in a bitwise combination of values, whether one or more Shift, Alt, or Ctrl 
+modifier keys was pressed simultaneously with the console key.
 
 =cut
 
@@ -2868,10 +2689,10 @@ simultaneously with the console key.
           # First check for non-keyboard events & discard them. Generally we tap 
           # into only KeyDown events and ignore the KeyUp events but it is 
           # possible that we are dealing with a Alt+NumPad unicode key sequence, 
-          # the final unicode char is revealed only when the Alt key is 
-          # released (i.e when the sequence is complete). To avoid noise, when 
-          # the Alt key is down, we should eat up any intermediate key strokes 
-          # (from NumPad) that collectively forms the Unicode character. 
+          # the final  unicode char is revealed only when the Alt key is released
+          # (i.e when  the sequence is complete). To avoid noise, when the Alt 
+          # key is down, we should eat up any intermediate key strokes (from 
+          # NumPad) that collectively forms the Unicode character.  
 
           if ( !IsKeyDownEvent(\@ir) ) {
             #
@@ -2927,7 +2748,7 @@ simultaneously with the console key.
     if ( !$intercept ) {
       $self->Write(chr($ir[uChar]));
     }
-    return bless $info, 'ConsoleKeyInfo';
+    return $info;
   }
 
 =item I<ReadLine>
@@ -2936,10 +2757,10 @@ simultaneously with the console key.
 
 Reads the next line of characters from the standard input stream.
 
-I<Returns>: the next line of characters from the input stream, or C<undef> if no 
+I<return> the next line of characters from the input stream, or C<undef> if no 
 more lines are available.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
 =cut
 
@@ -2961,7 +2782,7 @@ I<Throws>: I<IOException> if an I/O error occurred.
 
 Sets the foreground and background console colors to their defaults.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
 =cut
 
@@ -2990,9 +2811,9 @@ I<Throws>: I<IOException> if an I/O error occurred.
 
 Sets the height and width of the screen buffer area to the specified values.
 
-I<Param>: C<$width> of the buffer area measured in columns.
+I<param> $width of the buffer area measured in columns.
 
-I<Param>: C<$height> of the buffer area measured in rows.
+I<param> $height of the buffer area measured in rows.
 
 =cut
 
@@ -3028,11 +2849,11 @@ I<Param>: C<$height> of the buffer area measured in rows.
 
 Sets the position of the cursor.
 
-I<Param>: C<$left> column position of the cursor. Columns are numbered from left 
-to right starting at C<0>.
+I<param> $left column position of the cursor. Columns are numbered from left to
+right starting at 0.
 
-I<Param>: C<$top> row position of the cursor. Rows are numbered from top to 
-bottom starting at C<0>.
+I<param> $top row position of the cursor. Rows are numbered from top to bottom 
+starting at 0.
 
 =cut
 
@@ -3083,7 +2904,7 @@ bottom starting at C<0>.
 
 Sets the L</Error> attribute to the specified error FileHandle.
 
-I<Param>: C<$newError> represents a FileHandle that is the new standard error.
+I<param> $newError represents a FileHandle that is the new standard error.
 
 =cut
 
@@ -3096,7 +2917,6 @@ I<Param>: C<$newError> represents a FileHandle that is the new standard error.
       confess("ArgumentNullException:\n". 
         sprintf("$ResourceString{ArgumentNullException}\n", "newError"));
     }
-    $_isErrorTextWriterRedirected = TRUE;
     {
       lock($InternalSyncObject);
       $self->_set_Error($_error = $newError);
@@ -3110,7 +2930,7 @@ I<Param>: C<$newError> represents a FileHandle that is the new standard error.
 
 Sets the L</In> attribute to the specified input FileHandle.
 
-I<Param>: C<$newIn> represents a io handle that is the new standard input.
+I<param> $newIn represents a io handle that is the new standard input.
 
 =cut
 
@@ -3136,7 +2956,7 @@ I<Param>: C<$newIn> represents a io handle that is the new standard input.
 
 Sets the L</Out> attribute to the specified output FileHandle.
 
-I<Param>: C<$newOut> represents a io handle that is the new standard output.
+I<param> $newOut represents a io handle that is the new standard output.
 
 =cut
 
@@ -3149,7 +2969,6 @@ I<Param>: C<$newOut> represents a io handle that is the new standard output.
       confess("ArgumentNullException:\n". 
         sprintf("$ResourceString{ArgumentNullException}\n", "newOut"));
     }
-    $_isOutTextWriterRedirected = TRUE;
     {
       lock($InternalSyncObject);
       $self->_set_Out($_out = $newOut);
@@ -3163,9 +2982,9 @@ I<Param>: C<$newOut> represents a io handle that is the new standard output.
 
 Sets the height and width of the console window to the specified values.
 
-I<Param>: C<$width> of the console window measured in columns.
+I<param> $width of the console window measured in columns.
 
-I<Param>: C<$height> of the console window measured in rows.
+I<param> $height of the console window measured in rows.
 
 =cut
 
@@ -3273,9 +3092,9 @@ I<Param>: C<$height> of the console window measured in rows.
 
 Sets the position of the console window relative to the screen buffer.
 
-I<Param>: C<$left> corner of the console window.
+I<param> $left corner of the console window.
 
-I<Param>: C<$top> corner of the console window.
+I<param> $top corner of the console window.
 
 =cut
 
@@ -3331,19 +3150,19 @@ I<Param>: C<$top> corner of the console window.
 Writes the text representation of the specified arguments to the standard 
 output stream using the specified format information.
 
-I<Param>: C<$format> is a composite format string.
+I<param> $format is a composite format string.
 
-I<Param>: C<$arg0> is the first item to write using format.
+I<param> $arg0 is the first item to write using format.
 
-I<Param>: C<$arg1> is the second item to write using format.
+I<param> $arg1 is the second item to write using format.
 
-I<Param>: ...
+I<param> ...
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
-I<Throws>: I<ArgumentNullException> if C<$format> is C<undef>.
+I<throws> ArgumentNullException if $format is undef.
 
-I<Remarks>: this method does not perform any formatting of its own: It uses the 
+I<note> this method does not perform any formatting of its own: It uses the 
 Perl function I<sprintf>.
 
   method Write(Int $value)
@@ -3351,49 +3170,49 @@ Perl function I<sprintf>.
 Writes the text representation of the specified integer value to the standard 
 output stream.
 
-I<Param>: C<$value> is the value to write.
+I<param> $value is the value to write.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
   method Write(String $value)
 
 Writes the specified string value to the standard output stream.
 
-I<Param>: C<$value> is the value to write.
+I<param> $value is the value to write.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
   method Write(Object $value)
 
 Writes the text representation of the specified object to the standard output 
 stream.
 
-I<Param>: C<$value> is the value to write or C<undef>.
+I<param> $value is the value to write or undef.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
-I<Remarks>: If C<$value> is C<undef>, nothing is written and no exception is 
-thrown. Otherwise, the stringification method of C<$value> is called to produce 
-its stringrepresentation, and the resulting string is written to the standard 
-output stream.
+I<note> If $value is undef, nothing is written and no exception is thrown. 
+Otherwise, the stringification method of $value is called to produce its string
+representation, and the resulting string is written to the standard output 
+stream.
 
   method Write(Num $value)
 
 Writes the text representation of the specified floating-point value to the 
 standard output stream.
 
-I<Param>: C<$value> is the value to write.
+I<param> $value is the value to write.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
   method Write(Bool $value)
 
 Writes the text representation of the specified Boolean value to the standard 
 output stream.
 
-I<Param>: C<$value> is the value to write.
+I<param> $value is the value to write.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
 =cut
 
@@ -3409,7 +3228,6 @@ I<Throws>: I<IOException> if an I/O error occurred.
         confess("ArgumentNullException:\n". 
           sprintf("$ResourceString{ArgumentNullException}\n", "format"));
       }
-      no warnings 'uninitialized';
       $self->Out->printf($format, @_);
     } elsif ( @_ > 0 ) {
       $self->Out->print(shift);
@@ -3426,19 +3244,19 @@ Writes the text representation of the specified objects, followed by the
 current line terminator, to the standard output stream using the specified 
 format information.
 
-I<Param>: C<$format> is a composite format string.
+I<param> $format is a composite format string.
 
-I<Param>: C<$arg0> is the first item to write using format.
+I<param> $arg0 is the first item to write using format.
 
-I<Param>: C<$arg1> is the second item to write using format.
+I<param> $arg1 is the second item to write using format.
 
-I<Param>: ...
+I<param> ...
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
-I<Throws>: I<ArgumentNullException> if C<$format> is C<undef>.
+I<throws> ArgumentNullException if $format is undef.
 
-I<Remarks>: this method does not perform any formatting of its own: It uses the 
+I<note> this method does not perform any formatting of its own: It uses the 
 Perl function I<sprintf>.
 
   method WriteLine(String $value)
@@ -3446,56 +3264,56 @@ Perl function I<sprintf>.
 Writes the specified string value, followed by the current line terminator, to 
 the standard output stream.
 
-I<Param>: C<$value> is the value to write.
+I<param> $value is the value to write.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
   method WriteLine(Int $value)
 
 Writes the text representation of the specified integer value, followed by the 
 current line terminator, to the standard output stream.
 
-I<Param>: C<$value> is the value to write.
+I<param> $value is the value to write.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
   method WriteLine(Num $value)
 
 Writes the text representation of the specified floating-point value, followed 
 by the current line terminator, to the standard output stream.
 
-I<Param>: C<$value> is the value to write.
+I<param> $value is the value to write.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
   method WriteLine(Bool $value)
 
 Writes the text representation of the specified Boolean value, followed by the 
 current line terminator, to the standard output stream.
 
-I<Param>: C<$value> is the value to write.
+I<param> $value is the value to write.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
   method WriteLine()
 
 Writes the current line terminator to the standard output stream.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
   method WriteLine(Object $value)
 
 Writes the text representation of the specified object, followed by the current
 line terminator, to the standard output stream.
 
-I<Param>: C<$value> is the value to write or C<undef>.
+I<param> $value is the value to write or undef.
 
-I<Throws>: I<IOException> if an I/O error occurred.
+I<throws> IOException if an I/O error occurred.
 
-I<Remarks>: If C<$value> is C<undef> only the line terminator is written. 
-Otherwise, the stringification method of C<$value> is called to produce its 
-string representation, and the resulting string is written to the standard 
-output stream.
+I<note> If $value is undef only the line terminator is written. Otherwise, the 
+stringification method of $value is called to produce its string 
+representation, and the resulting string is written to the standard output 
+stream.
 
 =cut
 
@@ -3511,7 +3329,6 @@ output stream.
         confess("ArgumentNullException:\n". 
           sprintf("$ResourceString{ArgumentNullException}\n", "format"));
       }
-      no warnings 'uninitialized';
       $self->Out->say(sprintf($format, @_));
     } elsif ( @_ > 0 ) {
       $self->Out->say(shift);
@@ -3556,10 +3373,8 @@ output stream.
 
 Checks whether the developer mode is currently activated
 
-I<Returns>: I<true> if the developer mode is currently enabled. 
-
-I<Remarks>: It always returns I<false> on Windows versions older than 
-Windows 10.
+I<return> true if the developer mode is currently enabled. It always returns 
+false on Windows versions older than Windows 10.
 
 =cut
 
@@ -3577,9 +3392,9 @@ Windows 10.
 
 Converts the color attribute of the Windows console into a color constant.
 
-I<Param>: C<$c> is a color attribute of the Windows Console. 
+I<param> $c is a color attribute of the Windows Console. 
 
-I<Returns>: a console color constant.
+I<return> a console color constant.
 
 =cut
 
@@ -3601,13 +3416,13 @@ I<Returns>: a console color constant.
 
 Converts a color constant into the color attribute of the Windows Console.
 
-I<Param>: C<$color> specifies a color constant that defines the foreground or 
+I<param> $color specifies a color constant that defines the foreground or 
 background color.
 
-I<Param>: C<$isBackground> specifies whether the specified color constant is a 
+I<param> $isBackground specifies whether the specified color constant is a 
 foreground or background color.
 
-I<Returns>: a color attribute of the Windows Console.
+I<return> a color attribute of the Windows Console.
 
 =cut
 
@@ -3637,11 +3452,10 @@ I<Returns>: a color attribute of the Windows Console.
 Checks whether stdout or stderr are writable.  Do NOT pass
 stdin here.
 
-I<Param>: C<$outErrHandle> is a handle to a file or I/O device (for example 
-file, console buffer or pipe). The parameter should be created with write 
-access.
+I<param> $outErrHandle is a handle to a file or I/O device (for example file, 
+console buffer or pipe). The parameter should be created with write access.
 
-I<Returns>: I<true> if the specified handle is writable, otherwise I<false>. 
+I<return> true if the specified handle is writable, otherwise false. 
 
 =cut
 
@@ -3675,9 +3489,9 @@ I<Returns>: I<true> if the specified handle is writable, otherwise I<false>.
 
   sub ConsoleInputHandle() : Int
 
-Simplifies the use of I<GetStdHandle(STD_INPUT_HANDLE)>.
+Simplifies the use of GetStdHandle(STD_INPUT_HANDLE).
 
-I<Returns>: the standard input handle to the standard input device.
+I<return> the standard input handle to the standard input device.
 
 =cut
 
@@ -3691,9 +3505,9 @@ I<Returns>: the standard input handle to the standard input device.
 
   sub ConsoleOutputHandle() : Int
 
-Simplifies the use of I<GetStdHandle(STD_OUTPUT_HANDLE)>.
+Simplifies the use of GetStdHandle(STD_OUTPUT_HANDLE).
 
-I<Returns>: the standard output handle to the standard output device.
+I<return> the standard output handle to the standard output device.
 
 =cut
 
@@ -3708,16 +3522,16 @@ I<Returns>: the standard output handle to the standard output device.
   sub GetBufferInfo() : HashRef
   sub GetBufferInfo(Bool $throwOnNoConsole, Ref[Bool] $succeeded) : HashRef
 
-Simplifies the use of I<GetConsoleScreenBufferInfo()>.
+Simplifies the use of GetConsoleScreenBufferInfo().
 
-I<Param>: C<$throwOnNoConsole> must be set to I<true> if an exception is to be 
-generated in the event of an error and I<false> if an empty input record is to 
-be returned instead. 
+I<param> $throwOnNoConsole must be set to true if an exception is to be 
+generated in the event of an error and false if an empty input record is to be 
+returned instead. 
 
-I<Param>: C<$succeeded> [out] is I<true> if no error occurred and I<false> if an 
-error occurred.
+I<param> $succeeded [out] is true if no error occurred and false if an error 
+occurred.
 
-I<Returns>: an hash reference with informations about the console.
+I<return> an hash reference with informations about the console.
 
 =cut
 
@@ -3836,18 +3650,17 @@ I<Returns>: an hash reference with informations about the console.
 This subroutine is only exposed via methods to get at the console.
 We won't use any security checks here.
 
-I<Param>: C<$stdHandleName> specified the standard device (C<STD_INPUT_HANDLE>, 
-C<STD_OUTPUT_HANDLE> or C<STD_ERROR_HANDLE>).
+I<param> $stdHandleName specified the standard device (STD_INPUT_HANDLE, 
+STD_OUTPUT_HANDLE or STD_ERROR_HANDLE).
 
-I<Param>: C<$access> - the possible values of the C<$access> parameter are 
+I<param> $access: the possible values of the $access parameter are 
 system-dependent. See the documentation of L<Win32API::File/"OsFHandleOpen"> 
 to see which values are available.
 
-I<Param>: C<$bufferSize> buffer size.
+I<param> $bufferSize buffer size.
 
-I<Returns>: a FileHandle of the specified standard device (C<STD_INPUT_HANDLE>, 
-C<STD_OUTPUT_HANDLE> or C<STD_ERROR_HANDLE>) or L<IO::Null> in the event of an 
-error.
+I<return> a FileHandle of the specified standard device (STD_INPUT_HANDLE, 
+STD_OUTPUT_HANDLE or STD_ERROR_HANDLE) or IO::Null in the event of an error.
 
 =cut
 
@@ -3901,11 +3714,11 @@ error.
 
 This subroutine checks whether the file API should be used.
 
-I<Param>: C<$handleType> specified the standard device (C<STD_INPUT_HANDLE>, 
-C<STD_OUTPUT_HANDLE> or C<STD_ERROR_HANDLE>).
+I<param> $handleType specified the standard device (STD_INPUT_HANDLE, 
+STD_OUTPUT_HANDLE or STD_ERROR_HANDLE).
 
-I<Returns>: I<true> if the specified handle should use the Window File API for 
-console access, or I<false> if the Windows Console API should rather be used. 
+I<return> true if the specified handle should use the Window File API for 
+console access, or false if the Windows Console API should rather be used. 
 
 =cut
 
@@ -3916,16 +3729,23 @@ console access, or I<false> if the Windows Console API should rather be used.
     switch: for ($handleType) {
 
       case: $_ == STD_INPUT_HANDLE and
-        return !IsStandardConsoleUnicodeEncoding(__PACKAGE__->InputEncoding) 
-          || __PACKAGE__->IsInputRedirected;
+        return !IsStandardConsoleUnicodeEncoding(
+          $_inputEncoding // Win32::GetConsoleCP()) 
+            || 
+          ($_isStdInRedirected // IsHandleRedirected(ConsoleInputHandle()));
 
       case: $_ == STD_OUTPUT_HANDLE and
-        return !IsStandardConsoleUnicodeEncoding(__PACKAGE__->OutputEncoding) 
-          || __PACKAGE__->IsOutputRedirected;
+        return !IsStandardConsoleUnicodeEncoding(
+          $_outputEncoding // Win32::GetConsoleOutputCP()) 
+            || 
+          ($_isStdOutRedirected // IsHandleRedirected(ConsoleOutputHandle()));
 
       case: $_ == STD_ERROR_HANDLE and 
-        return !IsStandardConsoleUnicodeEncoding(__PACKAGE__->OutputEncoding) 
-          || __PACKAGE__->IsErrorRedirected;
+        return !IsStandardConsoleUnicodeEncoding(
+          $_outputEncoding // Win32::GetConsoleOutputCP()) 
+            || 
+          ($_isStdErrRedirected // IsHandleRedirected(
+            Win32::Console::_GetStdHandle(STD_ERROR_HANDLE)));
 
       default: {
         # This can never happen.
@@ -3941,8 +3761,8 @@ console access, or I<false> if the Windows Console API should rather be used.
 
 Initialization of standard output or standard error handle.
 
-I<Param>: C<$stdout> is I<true> if a standard output handle is to be 
-initialized and I<false> if a standard error handle is to be initialized.
+I<param> $stdout is true if a standard output handle is to be initialized and 
+false if a standard error handle is to be initialized.
 
 =cut
 
@@ -3983,20 +3803,19 @@ initialized and I<false> if a standard error handle is to be initialized.
 
       if ( !$s ) {
         if ( _DEBUG && CheckOutputDebug() ) {
-          $writer = MakeDebugOutputTextWriter($stdout 
-            ? "Console->Out: " 
-            : "Console->Error: "
-          );
+          $writer = MakeDebugOutputTextWriter($stdout ? "Console->Out: " : "Console->Error: ");
         } else {
           $writer = IO::Null->new();
         }
       }
       else {
-        my $encoding = __PACKAGE__->OutputEncoding;
-        my $cpi = $encoding->$CodePage();
-        $cpi ||= $stdout ? Win32::GetConsoleOutputCP() : Win32::GetACP();
+        my $encoding = do {
+          my $cpi = $_outputEncoding;
+          $cpi //= $stdout ? Win32::GetConsoleOutputCP() : Win32::GetACP();
+          $cpi == 65001 ? ':encoding(UTF-8)' : ":encoding(cp$cpi)";
+        };
         my $stdxxx = IO::File->new_from_fd(fileno($s), 'w');
-        $stdxxx->binmode(":encoding(cp$cpi)");
+        $stdxxx->binmode($encoding);
         $stdxxx->autoflush(TRUE);
         $writer = $stdxxx;
       }
@@ -4017,9 +3836,9 @@ initialized and I<false> if a standard error handle is to be initialized.
 
 For tracking Alt+NumPad unicode key sequence.
 
-I<Param>: C<$ir> is an array reference to a KeyEvent input record.
+I<param> $ir is an array reference to a KeyEvent input record.
 
-I<Returns>: I<true> if C<Alt> key is pressed, otherwise I<false>.
+I<return> true if Alt key is pressed, otherwise false.
 
 =cut
 
@@ -4042,10 +3861,10 @@ I<Returns>: I<true> if C<Alt> key is pressed, otherwise I<false>.
 
 Detects if a console handle has been redirected.
 
-I<Param>: C<$ioHandle> is a Windows IO handle (for example a handle of a file, 
-a console or a pipe).
+I<param> $ioHandle is a Windows IO handle (for example a handle of a file, a 
+console or a pipe).
 
-I<Returns>: I<true> if the specified handle is redirected, otherwise I<false>.
+I<return> true if the specified handle is redirected, otherwise false.
 
 =cut
 
@@ -4081,9 +3900,9 @@ I<Returns>: I<true> if the specified handle is redirected, otherwise I<false>.
 
 To detect pure KeyDown events.
 
-I<Param>: C<$ir> is an array reference to a KeyEvent input record.
+I<param> $ir is an array reference to a KeyEvent input record.
 
-I<Returns>: I<true> on a KeyDown event, otherwise I<false>.
+I<return> true on a KeyDown event, otherwise false.
 
 =cut
 
@@ -4105,9 +3924,9 @@ I<Returns>: I<true> on a KeyDown event, otherwise I<false>.
 
 Detects if the KeyEvent uses a mod key.
 
-I<Param>: C<$ir> is an array reference to a KeyEvent input record.
+I<param> $ir is an array reference to a KeyEvent input record.
 
-I<Returns>: I<true> if the KeyEvent uses a mod key, otherwise I<false>.
+I<return> true if the KeyEvent uses a mod key, otherwise false.
 
 =cut
 
@@ -4128,41 +3947,42 @@ I<Returns>: I<true> if the KeyEvent uses a mod key, otherwise I<false>.
 
 =item I<IsStandardConsoleUnicodeEncoding>
 
-  sub IsStandardConsoleUnicodeEncoding(Object $encoding) : Bool
+  sub IsStandardConsoleUnicodeEncoding(Int $encoding) : Bool
 
 Test if standard console Unicode encoding is activated.
 
-I<Param>: C<$encoding> contains a L<Encode::Encoding> object.
+I<param> $encoding contains the code page identifier.
 
-I<Returns>: I<true> if the encoding uses a Windows Unicode encoding or I<false> 
-if not.
+I<return> true if the encoding uses a Windows Unicode encoding or false if not.
 
 =cut
 
-  # We cannot simply compare the encoding to Encode::Unicode because it 
+  # We cannot simply compare the encoding to Encoding.Unicode bacasue it 
   # incorporates BOM and we do not care about BOM. Instead, we compare by 
   # class, codepage and little-endianess only:
   sub IsStandardConsoleUnicodeEncoding {
     assert { @_ == 1 };
-    my $encoding = assert_Object shift;
+    my $encoding = assert_Int shift;
 
-    my $enc = $encoding->isa('Encode::Unicode') ? $encoding : undef;
+    my $enc = {
+      CodePage  => $encoding,
+      bigEndian => $Config{byteorder} & 0b1,
+    };
     return FALSE if !$enc;
 
-    return StdConUnicodeEncoding->name eq $enc->name
-        && StdConUnicodeEncoding->{endian} eq $enc->{endian};
+    return StdConUnicodeEncoding->{CodePage} == $enc->{CodePage}
+        && StdConUnicodeEncoding->{bigEndian} == $enc->{bigEndian};
   }
 
 =item I<MakeDebugOutputTextWriter>
 
   sub MakeDebugOutputTextWriter(Str $streamLabel) : IO::Handle
 
-Creates an I<IO::DebugOutputTextWriter> object (derived from L<IO::Handle>) 
-and returns it.
+Creates an I<IO::DebugOutputTextWriter> IO::Handle and returns it.
 
-I<Param>: C<$streamLabel> contains a string which is prefixed to each output.
+I<param> $streamLabel contains a string which is prefixed to each output.
 
-I<Returns>: of an L<IO::Handle> of type I<IO::DebugOutputTextWriter>.
+I<return> of an IO::Handle of type I<IO::DebugOutputTextWriter>.
 
 =cut
 
@@ -4182,13 +4002,13 @@ I<Returns>: of an L<IO::Handle> of type I<IO::DebugOutputTextWriter>.
 
 Create a reference to safe an existing file handle.
 
-I<Param>: C<$preexistingHandle> is an FileHandle that represents the 
-pre-existing file handle to use.
+I<param> $preexistingHandle is an FileHandle that represents the pre-existing 
+file handle to use.
 
-I<Param>: C<$ownsHandle> should be set to I<true> to reliably release the file 
-handle during the closing phase; I<false> to prevent release.
+I<param> $ownsHandle should be set to true to reliably release the file handle 
+during the closing phase; false to prevent release.
 
-I<Returns>: the specified FileHandle.
+I<return> the specified FileHandle.
 
 =cut
 
@@ -4603,9 +4423,7 @@ package ConsoleKeyInfo {
 #-----------------------
   use strict;
   use warnings;
-  use Carp qw( confess );
   use Data::Dumper;
-  use Scalar::Util qw( looks_like_number );
 
   sub new { # $object ($class, \%arg | @args)
     my $class = shift;
@@ -4619,21 +4437,17 @@ package ConsoleKeyInfo {
       }
     } elsif ( @_ == 1 ) {
       return unless ref($_[0])
-        && length($_[0]->{KeyChar}) 
-        && looks_like_number($_[0]->{Key}) 
-        && looks_like_number($_[0]->{Modifiers});
+        && defined($_[0]->{KeyChar}) 
+        && defined($_[0]->{Key}) 
+        && defined($_[0]->{Modifiers});
       $self = $_[0];
     } else {
-      return unless length($_[0])
-        && looks_like_number($_[1]);
       $self = {
-        KeyChar => $_[0],
-        Key => $_[1],
+        KeyChar => $_[0] // return,
+        Key => $_[1] // return,
         Modifiers => ($_[2] ? 2 : 0) | ($_[3] ? 1 : 0) | ($_[4] ? 4 : 0),
       }
     }
-    confess 'ArgumentOutOfRangeException' unless
-      $self->{Key} >= 0 && $self->{Key} <= 255;
     return bless $self, $class;
   }
 
@@ -4711,35 +4525,6 @@ package ConsoleModifiers {
 
 __END__
 
-=head1 DEPENDENCIES
-
-This module is based on L<Win32::Console>. Additionally, there are only a few 
-dependencies on non-core modules.
-
-The requirements necessary for the runtime are listed below:
-
-=over
-
-=item * L<5.014|http://metacpan.org/release/DAPM/perl-5.14.4>
-
-=item * L<Class::Method::Modifiers>
-
-=item * L<Class::Tiny>
-
-=item * L<Class::Tiny::Antlers>
-
-=item * L<IO::Null>
-
-=item * L<namespace::sweep> 
-
-=item * L<PerlX::Assert>
-
-=item * L<Type::Nano> or L<Types::Standard>
-
-=item * L<Win32::Console> 
-
-=back
-
 =head1 COPYRIGHT AND LICENCE
 
  This class provides access to the standard input, standard output
@@ -4787,6 +4572,15 @@ The requirements necessary for the runtime are listed below:
 
 2008, 2009 by Piotr Roszatycki E<lt>dexter@cpan.orgE<gt> (Code snippet from 
 L<constant:boolean>)
+
+=item *
+
+2011 by Joe Vornehm E<lt>joejr@vornehm.comE<gt> (Code snippet from I<RT64675>)
+
+=item *
+
+2019-2021 by magiblot E<lt>magiblot@hotmail.comE<gt> (Code snippet from 
+I<stdioctl.cpp>)
 
 =back
 

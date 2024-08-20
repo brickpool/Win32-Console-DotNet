@@ -1,17 +1,5 @@
 Revision history for Win32::Console::DotNet
 
-0.5   2024-08-20
-        - Add 'Encode::Encoding' support (instead of using a code pages)
-        - Add Windows code page aliases to the built-in encodings
-        - Add 'Type::Tiny' support (if installed)
-        - Add/Change Tests
-        - Change 'ReadKey' returns 'ConsoleKeyInfo' (blessed HashRef)
-        - Change 'Write/WriteLine' suppress "uninitialized" warning
-        - Change meaning of '_DEBUG' (only enabled if EXTENDED_TESTING is true)
-        - Update type check in the constructor of 'ConsoleKeyInfo'
-        - Update (POD) documentation
-        - Update Samples
-
 0.4.4   2024-08-19
         - Bugfix Retrieval of 'Title' with a length of exactly 1024 characters
         - Bugfix 'MoveBufferArea' dies without error code on 1x1 regions
