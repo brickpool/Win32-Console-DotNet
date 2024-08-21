@@ -1,10 +1,10 @@
 {
-   "abstract" : "Win32 Console .NET interface",
+   "abstract" : "Win32::Console .NET interface",
    "author" : [
       "J. Schneider"
    ],
-   "dynamic_config" : 0,
-   "generated_by" : "ExtUtils::MakeMaker version 6.98, CPAN::Meta::Converter version 2.150010",
+   "dynamic_config" : 1,
+   "generated_by" : "ExtUtils::MakeMaker version 7.1, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "mit"
    ],
@@ -32,9 +32,14 @@
       },
       "runtime" : {
          "recommends" : {
+            "CLDR::Number" : "0",
+            "Capture::Tiny" : "0",
             "DateTime" : "0",
+            "HTTP::Date" : "0",
             "Time::HiRes" : "0",
-            "Type::Tiny" : "0"
+            "Time::Piece" : "0",
+            "Type::Tiny" : "0",
+            "bytes" : "0"
          },
          "requires" : {
             "Class::Method::Modifiers" : "2.11",
@@ -54,6 +59,7 @@
             "IO::Null" : "1.01",
             "List::Util" : "0",
             "PerlX::Assert" : "0.905",
+            "Platform::Windows" : "0.002",
             "Symbol" : "0",
             "Type::Nano" : "0.014",
             "Win32" : "0.54",
@@ -72,7 +78,9 @@
       "test" : {
          "requires" : {
             "FindBin" : "0",
+            "IPC::Open3" : "0",
             "POSIX" : "0",
+            "Perl::OSType" : "1.009",
             "Scalar::Util" : "0",
             "Test::Exception" : "0.43",
             "Test::Simple" : "1.302188",
@@ -81,7 +89,7 @@
          }
       }
    },
-   "release_status" : "testing",
+   "release_status" : "stable",
    "resources" : {
       "bugtracker" : {
          "web" : "https://github.com/brickpool/Win32-Console-DotNet/issues"
@@ -92,7 +100,7 @@
          "web" : "https://github.com/brickpool/Win32-Console-DotNet"
       }
    },
-   "version" : "0.005000",
+   "version" : "0.005001",
    "x_homepage" : "http://brickpool.de",
    "x_serialization_backend" : "JSON::PP version 2.27300"
 }

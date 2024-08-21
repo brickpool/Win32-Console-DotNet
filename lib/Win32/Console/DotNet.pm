@@ -59,7 +59,7 @@ use namespace::sweep;
 
 # version '...'
 our $version = 'v4.6.0';
-our $VERSION = '0.005000';
+our $VERSION = '0.005001';
 $VERSION = eval $VERSION;
 
 # authority '...'

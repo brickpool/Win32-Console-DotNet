@@ -1,11 +1,13 @@
 ---
-abstract: 'Win32 Console .NET interface'
+abstract: 'Win32::Console .NET interface'
 author:
   - 'J. Schneider'
 build_requires:
   ExtUtils::MakeMaker: '0'
   FindBin: '0'
+  IPC::Open3: '0'
   POSIX: '0'
+  Perl::OSType: '1.009'
   Scalar::Util: '0'
   Test::Exception: '0.43'
   Test::Simple: '1.302188'
@@ -13,8 +15,8 @@ build_requires:
   autodie: '0'
 configure_requires:
   ExtUtils::MakeMaker: '6.64'
-dynamic_config: 0
-generated_by: 'ExtUtils::MakeMaker version 6.98, CPAN::Meta::Converter version 2.150010'
+dynamic_config: 1
+generated_by: 'ExtUtils::MakeMaker version 7.1, CPAN::Meta::Converter version 2.150010'
 license: mit
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -25,9 +27,14 @@ no_index:
     - t
     - inc
 recommends:
+  CLDR::Number: '0'
+  Capture::Tiny: '0'
   DateTime: '0'
+  HTTP::Date: '0'
   Time::HiRes: '0'
+  Time::Piece: '0'
   Type::Tiny: '0'
+  bytes: '0'
 requires:
   Class::Method::Modifiers: '2.11'
   Class::Tiny: '1.000'
@@ -46,6 +53,7 @@ requires:
   IO::Null: '1.01'
   List::Util: '0'
   PerlX::Assert: '0.905'
+  Platform::Windows: '0.002'
   Symbol: '0'
   Type::Nano: '0.014'
   Win32: '0.54'
@@ -62,6 +70,6 @@ requires:
 resources:
   bugtracker: https://github.com/brickpool/Win32-Console-DotNet/issues
   repository: https://github.com/brickpool/Win32-Console-DotNet.git
-version: 0.005000
+version: '0.005001'
 x_homepage: http://brickpool.de
 x_serialization_backend: 'CPAN::Meta::YAML version 0.018'
