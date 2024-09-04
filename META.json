@@ -4,13 +4,13 @@
       "J. Schneider"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 7.1, CPAN::Meta::Converter version 2.150010",
+   "generated_by" : "ExtUtils::MakeMaker version 7.70, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "mit"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
-      "version" : "2"
+      "version" : 2
    },
    "name" : "Win32-Console-DotNet",
    "no_index" : {
@@ -100,7 +100,7 @@
          "web" : "https://github.com/brickpool/Win32-Console-DotNet"
       }
    },
-   "version" : "0.005001",
+   "version" : "0.005002",
    "x_homepage" : "http://brickpool.de",
-   "x_serialization_backend" : "JSON::PP version 2.27300"
+   "x_serialization_backend" : "JSON::PP version 4.16"
 }

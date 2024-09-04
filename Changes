@@ -1,5 +1,9 @@
 Revision history for Win32::Console::DotNet
 
+0.5.2   2024-08-28
+        - Update '34ThreadSafety.t' surpress warnings for redirected handles
+        - Update 'WriteLine' redundant intercept warnings
+
 0.5.1   2024-08-26
         - Bugfix error handling in 'CursorSize' and 'CursorVisible'
         - Bigfix '03ConsoleDotNet.t' aborts with an exception

@@ -59,7 +59,7 @@ use namespace::sweep;
 
 # version '...'
 our $version = 'v4.6.0';
-our $VERSION = '0.005001';
+our $VERSION = '0.005002';
 $VERSION = eval $VERSION;
 
 # authority '...'
@@ -3557,6 +3557,15 @@ output stream.
     assert_FileHandle $self->Out;
     $! = undef;
     if ( @_ > 1 ) {
+      # Intercept redundant warnings in Perl 5.22 and higher
+      local $SIG{__WARN__} = sub {
+        if ( $] >= 5.022 && warnings::enabled('redundant') ) {
+          $_ = shift;
+          s/\sat .+?\R$//;
+          s/sprintf/WriteLine/g;
+          Carp::carp($_);
+        }
+      };
       my $format = shift;
       if ( !defined $format ) {
         confess("ArgumentNullException:\n". 
